@@ -1,4 +1,4 @@
-SRC=sutil.c mutil.c printf.c log.c cfg.c vec3.c tri.c aabb.c mesh.c bvh.c cam.c view.c main.c
+SRC=sutil.c mutil.c printf.c log.c cfg.c vec3.c ray.c tri.c aabb.c mesh.c bvh.c cam.c view.c main.c
 OBJ=$(patsubst %.c,obj/%.o,$(SRC))
 OUT=main
 
