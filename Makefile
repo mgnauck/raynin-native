@@ -2,7 +2,7 @@ SRC=sutil.c mutil.c printf.c log.c cfg.c vec3.c ray.c tri.c aabb.c mesh.c bvh.c 
 OBJ=$(patsubst %.c,obj/%.o,$(SRC))
 OUT=main
 
-CFLAGS=-std=c2x -O3 -nostdlib -ffast-math -flto -pedantic-errors -Wall -Wextra -Wno-unused-parameter $(shell sdl2-config --cflags)
+CFLAGS=-std=c2x -O2 -nostdlib -ffast-math -flto -pedantic-errors -Wall -Wextra -Wno-unused-parameter $(shell sdl2-config --cflags)
 LDFLAGS=-s
 LIBS=-lm $(shell sdl2-config --libs)
 
