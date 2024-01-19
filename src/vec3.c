@@ -93,6 +93,16 @@ vec3 vec3_max(vec3 a, vec3 b)
   return (vec3){ max(a.x, b.x), max(a.y, b.y), max(a.z, b.z) };
 }
 
+float vec3_min_comp(vec3 v)
+{
+  return min(min(v.x, v.y), v.z);
+}
+
+float vec3_max_comp(vec3 v)
+{
+  return max(max(v.x, v.y), v.z);
+}
+
 vec3 vec3_spherical(float theta, float phi)
 {
   return (vec3){ -cosf(phi) * sinf(theta), -cosf(theta), sinf(phi) * sinf(theta) };

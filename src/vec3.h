@@ -31,6 +31,9 @@ float vec3_len(vec3 v);
 vec3  vec3_min(vec3 a, vec3 b);
 vec3  vec3_max(vec3 a, vec3 b);
 
+float vec3_min_comp(vec3 v);
+float vec3_max_comp(vec3 v);
+
 vec3  vec3_spherical(float theta, float phi);
 
 #endif
