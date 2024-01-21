@@ -4,19 +4,20 @@
 #include "sutil.h"
 #include "mutil.h"
 #include "vec3.h"
-#include "tri.h"
 #include "ray.h"
 #include "cfg.h"
 #include "view.h"
 #include "cam.h"
 #include "mesh.h"
-#include "intersect.h"
+#include "trace.h"
 
-#define WIDTH       640
-#define HEIGHT      640
+#define WIDTH       1280
+#define HEIGHT      800
 
 #define MOVE_VEL    0.2f
 #define LOOK_VEL    0.005f
+
+//#define NO_KEY_OR_MOUSE_HANDLING
 
 bool          quit = false;
 SDL_Surface   *screen;
@@ -105,19 +106,7 @@ void init(uint32_t width, uint32_t height)
 
   config = (cfg){ width, height, 5, 5 };
 
-  curr_mesh = init_scene(64, config, &curr_view, &curr_cam);
-}
-
-vec3 trace(ray r)
-{
-  float t = MAX_DISTANCE;
-  for(size_t i=0; i<curr_mesh->tri_cnt; i++) {
-    float u, v;
-    float d = intersect_tri(r, &curr_mesh->tris[i], &u, &v);
-    if(d > EPSILON && d < t)
-      t = d;
-  }
-  return t < MAX_DISTANCE ? (vec3){ 1.0f, 1.0f, 1.0f} : (vec3){ 0.0f, 0.0f, 0.0f };
+  curr_mesh = init_scene(256, config, &curr_view, &curr_cam);
 }
 
 bool update(float time)
@@ -131,11 +120,16 @@ bool update(float time)
     view_calc(&curr_view, config.width, config.height, &curr_cam);
   }
 
-  // Render
-  for(size_t j=0; j<HEIGHT; j++) {
-    for(size_t i=0; i<WIDTH; i++) {
-      vec3 col = trace(ray_create_primary((float)i, (float)j, &curr_view, &curr_cam));
-      set_pix(i, j, col);
+#define BLOCK_SIZE 4
+  for(size_t j=0; j<HEIGHT; j+=BLOCK_SIZE) {
+    for(size_t i=0; i<WIDTH; i+=BLOCK_SIZE) {
+      for(size_t y=0; y<BLOCK_SIZE; y++) {
+        for(size_t x=0; x<BLOCK_SIZE; x++) {
+          ray r = ray_create_primary((float)(i + x), (float)(j + y), &curr_view, &curr_cam);
+          vec3 c = trace_bvh(&r, curr_mesh);
+          set_pix(i + x, j + y, c);
+        }
+      }
     }
   }
 
@@ -167,10 +161,12 @@ int main(int argc, char *argv[])
     goto clean_window;
   }
 
+#ifndef NO_KEY_OR_MOUSE_HANDLING
   if(SDL_SetRelativeMouseMode(SDL_TRUE) < 0) {
     code = EXIT_FAILURE;
     goto clean_window;
   }
+#endif
 
   init(WIDTH, HEIGHT);
 
@@ -183,10 +179,12 @@ int main(int argc, char *argv[])
     while(SDL_PollEvent(&event)) {
       if(event.type == SDL_QUIT)
         quit = true;
+#ifndef NO_KEY_OR_MOUSE_HANDLING
       else if(event.type == SDL_KEYDOWN)
         handle_keypress(&event.key.keysym);
       else if(event.type == SDL_MOUSEMOTION)
         handle_mouse_motion(&event.motion);
+#endif
     }
 
     uint64_t frame = SDL_GetTicks64() - last;

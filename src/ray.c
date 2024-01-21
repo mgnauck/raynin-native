@@ -3,9 +3,9 @@
 #include "view.h"
 #include "cam.h"
 
-ray ray_create(vec3 ori, vec3 dir)
+ray ray_create(vec3 ori, vec3 dir, float tmin)
 {
-  return (ray){ ori, dir, (vec3){ 1.0f / dir.x, 1.0f / dir.y, 1.0f / dir.z } };
+  return (ray){ ori, dir, (vec3){ 1.0f / dir.x, 1.0f / dir.y, 1.0f / dir.z }, tmin };
 }
 
 ray ray_create_primary(float x, float y, view *v, cam *c)
@@ -31,5 +31,5 @@ ray ray_create_primary(float x, float y, view *v, cam *c)
           foc_rad));
   }
 
-  return ray_create(eye_smpl, vec3_unit(vec3_sub(pix_smpl, eye_smpl)));
+  return ray_create(eye_smpl, vec3_unit(vec3_sub(pix_smpl, eye_smpl)), MAX_DISTANCE);
 }
