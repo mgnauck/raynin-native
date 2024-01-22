@@ -11,8 +11,8 @@
 #include "mesh.h"
 #include "trace.h"
 
-#define WIDTH       1280
-#define HEIGHT      800
+#define WIDTH       800
+#define HEIGHT      600
 
 #define MOVE_VEL    0.2f
 #define LOOK_VEL    0.005f
@@ -85,36 +85,26 @@ void handle_mouse_motion(const SDL_MouseMotionEvent *event)
   view_calc(&curr_view, config.width, config.height, &curr_cam);
 }
 
-mesh *init_scene(size_t tri_cnt, cfg conf, view *v, cam *c)
-{
-  vec3 vertices[tri_cnt * 3];
-
-  for(size_t i=0; i<tri_cnt * 3; i++)
-    vertices[i] = vec3_rand();
-
-  *c = (cam){ .vert_fov = 60.0f, .foc_dist = 3.0f, .foc_angle = 0.0f };
-  cam_set(c, (vec3){ 0.0f, 0.0f, -18.0f }, (vec3){ 0.0f, 0.0f, 0.0f });
-
-  view_calc(v, conf.width, conf.height, c);
-
-  return mesh_create(vertices, tri_cnt * 3);
-}
-
 void init(uint32_t width, uint32_t height)
 {
   pcg_srand(42u, 303u);
 
   config = (cfg){ width, height, 5, 5 };
-
-  curr_mesh = init_scene(256, config, &curr_view, &curr_cam);
+  
+  curr_cam = (cam){ .vert_fov = 60.0f, .foc_dist = 3.0f, .foc_angle = 0.0f };
+  cam_set(&curr_cam, (vec3){ -1.5f, -0.2f, -2.5f }, (vec3){ -1.0f, -0.2f, -0.5f });
+  
+  view_calc(&curr_view, config.width, config.height, &curr_cam);
+  
+  curr_mesh = mesh_create_file("data/example.tri", 12582);
 }
 
 bool update(float time)
 {
   if(orbit_cam) {
     float s = 0.3f;
-    float r = 18.0f;
-    float h = 2.5f;
+    float r = -5.5f;
+    float h = -0.5f;
     vec3 pos = (vec3){ r * sinf(time * s), h * sinf(time * s * 0.7f), r * cosf(time * s) };
     cam_set(&curr_cam, pos, vec3_neg(pos));
     view_calc(&curr_view, config.width, config.height, &curr_cam);

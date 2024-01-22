@@ -17,7 +17,11 @@ typedef struct mesh {
   size_t    mat_ofs;
 } mesh;
 
-mesh  *mesh_create(vec3 *data, size_t data_size);
+mesh  *mesh_init(size_t tri_cnt);
 void  mesh_release(mesh *m);
+void  mesh_create_bvh(mesh *m);
+
+mesh  *mesh_create_file(const char *path, size_t tri_cnt);
+mesh  *mesh_create_rand(size_t tri_cnt);
 
 #endif

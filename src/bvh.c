@@ -158,7 +158,8 @@ void subdivide_node(bvh *b, bvh_node *n)
 bvh *bvh_init(mesh *m)
 {
   bvh *b = malloc(sizeof(*b));
-  b->nodes = malloc((2 * m->tri_cnt - 1) * sizeof(*b->nodes));
+  //b->nodes = malloc((2 * m->tri_cnt - 1) * sizeof(*b->nodes));
+  b->nodes = aligned_alloc(64, (2 * m->tri_cnt) * sizeof(*b->nodes));
   b->indices = malloc(m->tri_cnt * sizeof(*b->indices));
   b->mesh = m;
 
@@ -176,13 +177,19 @@ void bvh_create(bvh *b)
   root->start_idx = 0;
   root->obj_cnt = b->mesh->tri_cnt;
 
+  // Skip node 1 for better aligment of children in mem
+  b->node_cnt++;
+
   update_node_bounds(b, root);
   subdivide_node(b, root);
 }
 
 void bvh_refit(bvh *b)
 {
-  for(int32_t i=b->node_cnt - 1; i>=0; i--) {
+  for(int32_t i=b->node_cnt; i>=0; i--) {
+    if(i == 1)
+      // Skip node 1 due to mem alignment
+      continue;
     bvh_node *n = &b->nodes[i];
     if(n->obj_cnt > 0) {
       // Leaf with objects

@@ -3,6 +3,8 @@
 #include "view.h"
 #include "cam.h"
 
+//#define JITTER_AA
+
 ray ray_create(vec3 ori, vec3 dir, float tmin)
 {
   return (ray){ ori, dir, (vec3){ 1.0f / dir.x, 1.0f / dir.y, 1.0f / dir.z }, tmin };
@@ -14,10 +16,12 @@ ray ray_create_primary(float x, float y, view *v, cam *c)
   vec3 pix_smpl = vec3_add(v->pix_top_left, vec3_add(
         vec3_scale(v->pix_delta_x, x), vec3_scale(v->pix_delta_y, y)));
 
+#ifdef JITTER_AA
   // Jitter viewplane position (AA)
   pix_smpl = vec3_add(pix_smpl, vec3_add(
         vec3_scale(v->pix_delta_x, pcg_randf() - 0.5f),
         vec3_scale(v->pix_delta_y, pcg_randf() - 0.5f)));
+#endif
 
   // Jitter eye (DOF)
   vec3 eye_smpl = c->eye;

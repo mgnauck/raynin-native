@@ -5,6 +5,7 @@ OUT=main
 CC=clang
 CFLAGS=-std=c2x -O2 -ffast-math -flto -pedantic-errors -Wall -Wextra -Wno-unused-parameter $(shell sdl2-config --cflags)
 LDFLAGS=-s -fuse-ld=lld
+#LDFLAGS=-s
 LIBS=-lm $(shell sdl2-config --libs)
 
 all: $(OUT)

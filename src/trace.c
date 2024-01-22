@@ -6,7 +6,7 @@
 #include "bvh.h"
 #include "intersect.h"
 
-#define NODE_STACK_SIZE 32
+#define NODE_STACK_SIZE 64
 
 vec3 trace_bvh(ray *r, const mesh *m)
 {
@@ -14,7 +14,7 @@ vec3 trace_bvh(ray *r, const mesh *m)
   bvh_node *node_stack[NODE_STACK_SIZE];
   bvh_node *node = &m->bvh->nodes[0];
 
-  do {
+  while(true) {
     if(node->obj_cnt > 0) {
       // Leaf node, check triangles
       for(size_t i=0; i<node->obj_cnt; i++)
@@ -52,10 +52,10 @@ vec3 trace_bvh(ray *r, const mesh *m)
           node_stack[stack_pos++] = c2;
       }
     }
-  } while(true);
+  }
 
    if(r->t < MAX_DISTANCE) {
-    float c = 400.0f / (r->t * 50.0f);
+    float c = 40.0f / (r->t * 42.0f);
     return (vec3){ c, c, c };
   }
 

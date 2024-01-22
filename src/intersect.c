@@ -5,7 +5,6 @@
 
 // GPU efficient slabs test [Laine et al. 2013; Afra et al. 2016]
 // https://www.jcgt.org/published/0007/03/04/paper-lowres.pdf
-// Adapted and probably not optimal on CPU
 float intersect_aabb(const ray *r, vec3 min_ext, vec3 max_ext)
 {
   vec3 t0 = vec3_mul(vec3_sub(min_ext, r->ori), r->inv_dir);
