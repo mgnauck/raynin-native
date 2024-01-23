@@ -6,11 +6,13 @@
 
 typedef struct vec3 vec3;
 typedef struct tri tri;
+typedef struct tri_data tri_data;
 typedef struct bvh bvh;
 
 typedef struct mesh {
   size_t    tri_cnt;
   tri       *tris;
+  tri_data  *tris_data;
   vec3      *centers;
   bvh       *bvh;
   mat_type  mat_type;

@@ -9,6 +9,7 @@ mesh *mesh_init(size_t tri_cnt)
   mesh *m = malloc(sizeof(*m));
   m->tri_cnt = tri_cnt;
   m->tris = malloc(m->tri_cnt * sizeof(*m->tris));
+  m->tris_data = malloc(m->tri_cnt * sizeof(*m->tris_data));
   m->centers = malloc(m->tri_cnt * sizeof(*m->centers));
   return m;
 }
@@ -17,8 +18,9 @@ void mesh_release(mesh *m)
 {
   bvh_release(m->bvh);
   
-  free(m->tris);
   free(m->centers);
+  free(m->tris_data);
+  free(m->tris);
   free(m);
 }
 

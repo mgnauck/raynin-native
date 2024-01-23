@@ -6,19 +6,21 @@
 #include "bvh.h"
 #include "intersect.h"
 
-#define NODE_STACK_SIZE 64
-
 vec3 trace_bvh(ray *r, const mesh *m)
 {
-  uint32_t stack_pos = 0;
-  bvh_node *node_stack[NODE_STACK_SIZE];
-  bvh_node *node = &m->bvh->nodes[0];
+#define NODE_STACK_SIZE 64
+  uint32_t  stack_pos = 0;
+  bvh_node  *node_stack[NODE_STACK_SIZE];
+  bvh_node  *node = &m->bvh->nodes[0];
+  hit       h = (hit){ .t = MAX_DISTANCE };
 
   while(true) {
     if(node->obj_cnt > 0) {
       // Leaf node, check triangles
-      for(size_t i=0; i<node->obj_cnt; i++)
-        intersect_tri(r, &m->tris[m->bvh->indices[node->start_idx + i]]);
+      for(size_t i=0; i<node->obj_cnt; i++) {
+        size_t tri_idx = m->bvh->indices[node->start_idx + i];
+        intersect_tri(r, &m->tris[tri_idx], tri_idx, &h);
+      }
       if(stack_pos > 0)
         node = node_stack[--stack_pos];
       else
@@ -27,8 +29,8 @@ vec3 trace_bvh(ray *r, const mesh *m)
       // Interior node, check aabbs of children
       bvh_node *c1 = &m->bvh->nodes[node->start_idx];
       bvh_node *c2 = &m->bvh->nodes[node->start_idx + 1];
-      float     d1 = intersect_aabb(r, c1->min, c1->max);
-      float     d2 = intersect_aabb(r, c2->min, c2->max);
+      float     d1 = intersect_aabb(r, h.t, c1->min, c1->max);
+      float     d2 = intersect_aabb(r, h.t, c2->min, c2->max);
       if(d1 > d2) {
         // Swap for nearer child
         float td = d1;
@@ -54,23 +56,20 @@ vec3 trace_bvh(ray *r, const mesh *m)
     }
   }
 
-   if(r->t < MAX_DISTANCE) {
-    float c = 40.0f / (r->t * 42.0f);
-    return (vec3){ c, c, c };
-  }
+  if(h.t < MAX_DISTANCE)
+    return (vec3){ h.u, h.v, 1.0f - h.u - h.v };
 
   return (vec3){ 0.0f, 0.0f, 0.0f };
 }
 
 vec3 trace_mesh(ray *r, const mesh *m)
 {
+  hit h = (hit){ .t = MAX_DISTANCE };
   for(size_t i=0; i<m->tri_cnt; i++)
-    intersect_tri(r, &m->tris[i]);
+    intersect_tri(r, &m->tris[i], i, &h);
 
-  if(r->t < MAX_DISTANCE) {
-    float c = 400.0f / (r->t * 50.0f);
-    return (vec3){ c, 0, 0 };
-  }
+  if(h.t < MAX_DISTANCE)
+    return (vec3){ h.u, h.v, 1.0f - h.u - h.v };
 
   return (vec3){ 0.0f, 0.0f, 0.0f };
 }

@@ -5,7 +5,7 @@
 
 // GPU efficient slabs test [Laine et al. 2013; Afra et al. 2016]
 // https://www.jcgt.org/published/0007/03/04/paper-lowres.pdf
-float intersect_aabb(const ray *r, vec3 min_ext, vec3 max_ext)
+float intersect_aabb(const ray *r, float curr_t, vec3 min_ext, vec3 max_ext)
 {
   vec3 t0 = vec3_mul(vec3_sub(min_ext, r->ori), r->inv_dir);
   vec3 t1 = vec3_mul(vec3_sub(max_ext, r->ori), r->inv_dir);
@@ -13,11 +13,11 @@ float intersect_aabb(const ray *r, vec3 min_ext, vec3 max_ext)
   float tnear = vec3_max_comp(vec3_min(t0, t1));
   float tfar = vec3_min_comp(vec3_max(t0, t1));
 
-  return tnear <= tfar && tnear < r->t && tfar > EPSILON ? tnear : MAX_DISTANCE;
+  return tnear <= tfar && tnear < curr_t && tfar > EPSILON ? tnear : MAX_DISTANCE;
 }
 
 // MT ray-triangle: https://fileadmin.cs.lth.se/cs/Personal/Tomas_Akenine-Moller/raytri/
-void intersect_tri(ray *r, const tri *t)
+void intersect_tri(const ray *r, const tri *t, size_t prim_id, hit *h)
 {
   // Vectors of two edges sharing vertex 0
   const vec3 edge1 = vec3_sub(t->v[1], t->v[0]);
@@ -51,6 +51,10 @@ void intersect_tri(ray *r, const tri *t)
 
   // Calc distance
   const float dist = vec3_dot(edge2, qvec) * inv_det;
-  if(dist < r->t)
-    r->t = dist;
+  if(dist > EPSILON && dist < h->t) {
+    h->t = dist;
+    h->u = u;
+    h->v = v;
+    h->prim_id = prim_id;
+  }
 }
