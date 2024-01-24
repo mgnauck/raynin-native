@@ -9,7 +9,7 @@
 #include "view.h"
 #include "cam.h"
 #include "mesh.h"
-#include "trace.h"
+#include "intersect.h"
 
 #define WIDTH       800
 #define HEIGHT      600
@@ -92,19 +92,19 @@ void init(uint32_t width, uint32_t height)
   config = (cfg){ width, height, 5, 5 };
   
   curr_cam = (cam){ .vert_fov = 60.0f, .foc_dist = 3.0f, .foc_angle = 0.0f };
-  cam_set(&curr_cam, (vec3){ -1.5f, -0.2f, -2.5f }, (vec3){ -1.0f, -0.2f, -0.5f });
+  cam_set(&curr_cam, (vec3){ 0.0f, 0.0f, -5.0f }, (vec3){ 0.0f, 0.0f, 0.0f });
   
   view_calc(&curr_view, config.width, config.height, &curr_cam);
   
-  curr_mesh = mesh_create_file("data/example.tri", 12582);
+  curr_mesh = mesh_create_file("data/armadillo.tri", 30000);
 }
 
 bool update(float time)
 {
   if(orbit_cam) {
     float s = 0.3f;
-    float r = -5.5f;
-    float h = -0.5f;
+    float r = -5.0f;
+    float h = 0.0f;
     vec3 pos = (vec3){ r * sinf(time * s), h * sinf(time * s * 0.7f), r * cosf(time * s) };
     cam_set(&curr_cam, pos, vec3_neg(pos));
     view_calc(&curr_view, config.width, config.height, &curr_cam);
@@ -116,7 +116,10 @@ bool update(float time)
       for(size_t y=0; y<BLOCK_SIZE; y++) {
         for(size_t x=0; x<BLOCK_SIZE; x++) {
           ray r = ray_create_primary((float)(i + x), (float)(j + y), &curr_view, &curr_cam);
-          vec3 c = trace_bvh(&r, curr_mesh);
+          hit h = (hit){ .t = MAX_DISTANCE };
+          intersect_bvh(&r, curr_mesh->bvh, &h);
+          vec3 c = (h.t < MAX_DISTANCE) ?
+            (vec3){ h.u, h.v, 1.0f - h.u - h.v } : (vec3){ 0.0f, 0.0f, 0.0f };
           set_pix(i + x, j + y, c);
         }
       }

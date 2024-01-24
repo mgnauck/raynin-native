@@ -210,3 +210,13 @@ void bvh_release(bvh *b)
   free(b->nodes);
   free(b);
 }
+
+void bvh_inst_create(bvh_inst *bi, bvh *b, size_t idx, const mat4 transform)
+{
+  bi->bvh = b;
+  bi->inst_idx = idx;
+
+  // TODO Calc world space bounds
+
+  mat4_inverse(bi->inv_transform, transform);
+}

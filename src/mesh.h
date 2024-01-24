@@ -2,7 +2,6 @@
 #define MESH_H
 
 #include <stddef.h>
-#include "mat.h"
 
 typedef struct vec3 vec3;
 typedef struct tri tri;
@@ -15,8 +14,6 @@ typedef struct mesh {
   tri_data  *tris_data;
   vec3      *centers;
   bvh       *bvh;
-  mat_type  mat_type;
-  size_t    mat_ofs;
 } mesh;
 
 mesh  *mesh_init(size_t tri_cnt);

@@ -3,7 +3,9 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "vec3.h"
+#include "mat4.h"
+#include "aabb.h"
+#include "mat.h"
 
 typedef struct mesh mesh;
 
@@ -21,9 +23,20 @@ typedef struct bvh {
   mesh      *mesh;
 } bvh;
 
+typedef struct bvh_inst {
+  bvh       *bvh;
+  size_t    inst_idx;
+  aabb      bounds;
+  mat4      inv_transform;
+  mat_type  mat_type; // TODO
+  size_t    mat_ofs;
+} bvh_inst;
+
 bvh   *bvh_init(mesh *m);
 void  bvh_create(bvh *b);
 void  bvh_refit(bvh *b);
 void  bvh_release(bvh *b);
+
+void  bvh_inst_create(bvh_inst *bi, bvh *b, size_t idx, const mat4 transform);
 
 #endif

@@ -2,6 +2,8 @@
 #include "mutil.h"
 #include "ray.h"
 #include "tri.h"
+#include "mesh.h"
+#include "bvh.h"
 
 // GPU efficient slabs test [Laine et al. 2013; Afra et al. 2016]
 // https://www.jcgt.org/published/0007/03/04/paper-lowres.pdf
@@ -57,4 +59,59 @@ void intersect_tri(const ray *r, const tri *t, size_t prim_id, hit *h)
     h->v = v;
     h->prim_id = prim_id;
   }
+}
+
+void intersect_bvh(const ray *r, const bvh *b, hit *h)
+{
+#define NODE_STACK_SIZE 64
+  uint32_t  stack_pos = 0;
+  bvh_node  *node_stack[NODE_STACK_SIZE];
+  bvh_node  *node = &b->nodes[0];
+
+  while(true) {
+    if(node->obj_cnt > 0) {
+      // Leaf node, check triangles
+      for(size_t i=0; i<node->obj_cnt; i++) {
+        size_t tri_idx = b->indices[node->start_idx + i];
+        intersect_tri(r, &b->mesh->tris[tri_idx], tri_idx, h);
+      }
+      if(stack_pos > 0)
+        node = node_stack[--stack_pos];
+      else
+        break;
+    } else {
+      // Interior node, check aabbs of children
+      bvh_node *c1 = &b->nodes[node->start_idx];
+      bvh_node *c2 = &b->nodes[node->start_idx + 1];
+      float     d1 = intersect_aabb(r, h->t, c1->min, c1->max);
+      float     d2 = intersect_aabb(r, h->t, c2->min, c2->max);
+      if(d1 > d2) {
+        // Swap for nearer child
+        float td = d1;
+        d1 = d2;
+        d2 = td;
+        bvh_node *tc = c1;
+        c1 = c2;
+        c2 = tc;
+      }
+      if(d1 == MAX_DISTANCE) {
+        // Did miss both children, so check stack
+        if(stack_pos > 0)
+          node = node_stack[--stack_pos];
+        else
+          break;
+      } else {
+        // Continue with nearer child node
+        node = c1;
+        // Push farther child on stack if also a hit
+        if(d2 < MAX_DISTANCE)
+          node_stack[stack_pos++] = c2;
+      }
+    }
+  }
+}
+
+void intersect_bvh_inst(const ray *t, const bvh_inst *b, hit *h)
+{
+  // TODO
 }
