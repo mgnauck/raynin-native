@@ -12,9 +12,12 @@ void mat4_identity(mat4 d)
 
 void mat4_transpose(mat4 d, const mat4 m)
 {
+  for(int j=0; j<4; j++)
+    for(int i=0; i<4; i++)
+      d[4 * j + i] = m[4 * i + j];
 }
 
-void mat4_translation(mat4 d, const vec3 v)
+void mat4_trans(mat4 d, const vec3 v)
 {
   d[ 0] = 1.0f; d[ 1] = 0.0f; d[ 2] = 0.0f; d[ 3] = v.x;
   d[ 4] = 0.0f; d[ 5] = 1.0f; d[ 6] = 0.0f; d[ 7] = v.y;
@@ -22,7 +25,7 @@ void mat4_translation(mat4 d, const vec3 v)
   d[12] = 0.0f; d[13] = 0.0f; d[14] = 0.0f; d[15] = 1.0f;
 }
 
-void mat4_rotation_x(mat4 d, float rad)
+void mat4_rot_x(mat4 d, float rad)
 {
   float c = cosf(rad);
   float s = sinf(rad);
@@ -33,7 +36,7 @@ void mat4_rotation_x(mat4 d, float rad)
   d[12] = 0.0f; d[13] = 0.0f; d[14] = 0.0f; d[15] = 1.0f;
 }
 
-void mat4_rotation_y(mat4 d, float rad)
+void mat4_rot_y(mat4 d, float rad)
 {
   float c = cosf(rad);
   float s = sinf(rad);
@@ -44,7 +47,7 @@ void mat4_rotation_y(mat4 d, float rad)
   d[12] = 0.0f; d[13] = 0.0f; d[14] = 0.0f; d[15] = 1.0f;
 }
 
-void mat4_rotation_z(mat4 d, float rad)
+void mat4_rot_z(mat4 d, float rad)
 {
   float c = cosf(rad);
   float s = sinf(rad);
@@ -57,7 +60,6 @@ void mat4_rotation_z(mat4 d, float rad)
 
 void mat4_mul(mat4 d, const mat4 a, const mat4 b)
 {
-  // TODO Factor out relevant multiplications
   d[ 0] = a[ 0] * b[ 0] + a[ 1] * b[ 4] + a[ 2] * b[ 8] + a[ 3] * b[12];
   d[ 1] = a[ 0] * b[ 1] + a[ 1] * b[ 5] + a[ 2] * b[ 9] + a[ 3] * b[13];
   d[ 2] = a[ 0] * b[ 2] + a[ 1] * b[ 6] + a[ 2] * b[10] + a[ 3] * b[14];
@@ -79,9 +81,31 @@ void mat4_mul(mat4 d, const mat4 a, const mat4 b)
   d[15] = a[12] * b[ 3] + a[13] * b[ 7] + a[14] * b[11] + a[15] * b[15];
 }
 
+vec3 mat4_mul_pos(const mat4 m, vec3 v)
+{
+  vec3 r = {
+    m[0] * v.x + m[1] * v.y + m[ 2] * v.z + m[ 3],
+    m[4] * v.x + m[5] * v.y + m[ 6] * v.z + m[ 7],
+    m[8] * v.x + m[9] * v.y + m[10] * v.z + m[11],
+  };
+
+  float w = m[12] * v.x + m[13] * v.y + m[14] * v.z + m[15];
+
+  return w == 1 ? r : vec3_scale(r, 1.0f / w);
+}
+
+vec3 mat4_mul_dir(const mat4 m, vec3 v)
+{  
+  return (vec3){
+    m[0] * v.x + m[1] * v.y + m[ 2] * v.z,
+    m[4] * v.x + m[5] * v.y + m[ 6] * v.z,
+    m[8] * v.x + m[9] * v.y + m[10] * v.z,
+  };
+}
+
 // Taken from Mesa 3D
 // https://stackoverflow.com/questions/1148309/inverting-a-4x4-matrix
-bool mat4_inverse(mat4 d, const mat4 m)
+bool mat4_inv(mat4 d, const mat4 m)
 {
   mat4 inv;
 
@@ -162,24 +186,3 @@ bool mat4_inverse(mat4 d, const mat4 m)
   return true;
 }
 
-vec3 mat4_transform_pos(const mat4 m, vec3 v)
-{
-  vec3 r = {
-    m[0] * v.x + m[1] * v.y + m[ 2] * v.z + m[ 3],
-    m[4] * v.x + m[5] * v.y + m[ 6] * v.z + m[ 7],
-    m[8] * v.x + m[9] * v.y + m[10] * v.z + m[11],
-  };
-
-  float w = m[12] * v.x + m[13] * v.y + m[14] * v.z + m[15];
-
-  return w == 1 ? r : vec3_scale(r, 1.0f / w);
-}
-
-vec3 mat4_transform_dir(const mat4 m, vec3 v)
-{  
-  return (vec3){
-    m[0] * v.x + m[1] * v.y + m[ 2] * v.z,
-    m[4] * v.x + m[5] * v.y + m[ 6] * v.z,
-    m[8] * v.x + m[9] * v.y + m[10] * v.z,
-  };
-}

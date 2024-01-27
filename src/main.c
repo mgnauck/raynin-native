@@ -115,7 +115,8 @@ bool update(float time)
     for(size_t i=0; i<WIDTH; i+=BLOCK_SIZE) {
       for(size_t y=0; y<BLOCK_SIZE; y++) {
         for(size_t x=0; x<BLOCK_SIZE; x++) {
-          ray r = ray_create_primary((float)(i + x), (float)(j + y), &curr_view, &curr_cam);
+          ray r;
+          ray_create_primary(&r, (float)(i + x), (float)(j + y), &curr_view, &curr_cam);
           hit h = (hit){ .t = MAX_DISTANCE };
           intersect_bvh(&r, curr_mesh->bvh, &h);
           vec3 c = (h.t < MAX_DISTANCE) ?
@@ -137,7 +138,7 @@ void release()
 int main(int argc, char *argv[])
 {
   int32_t code = EXIT_SUCCESS;
-
+  
   if(SDL_Init(SDL_INIT_VIDEO) < 0)
     return EXIT_FAILURE;
   
