@@ -111,7 +111,10 @@ void intersect_bvh(const ray *r, const bvh *b, hit *h)
   }
 }
 
-void intersect_bvh_inst(const ray *t, const bvh_inst *b, hit *h)
+void intersect_bvh_inst(const ray *r, const bvh_inst *bi, hit *h)
 {
-  // TODO
+  ray r_obj;
+  ray_transform(&r_obj, bi->inv_transform, r);
+
+  intersect_bvh(&r_obj, bi->bvh, h);
 }

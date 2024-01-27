@@ -4,7 +4,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "mat4.h"
-#include "aabb.h"
 #include "mat.h"
 
 typedef struct mesh mesh;
@@ -24,9 +23,10 @@ typedef struct bvh {
 } bvh;
 
 typedef struct bvh_inst {
+  vec3      min;
   bvh       *bvh;
+  vec3      max;
   size_t    inst_idx;
-  aabb      bounds;
   mat4      inv_transform;
   mat_type  mat_type; // TODO
   size_t    mat_ofs;

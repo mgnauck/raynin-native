@@ -9,6 +9,7 @@
 #include "view.h"
 #include "cam.h"
 #include "mesh.h"
+#include "bvh.h"
 #include "intersect.h"
 
 #define WIDTH       800
@@ -26,6 +27,7 @@ cfg           config;
 view          curr_view;
 cam           curr_cam;
 mesh          *curr_mesh;
+bvh_inst      mesh_inst;
 
 bool          orbit_cam = false;
 
@@ -97,6 +99,10 @@ void init(uint32_t width, uint32_t height)
   view_calc(&curr_view, config.width, config.height, &curr_cam);
   
   curr_mesh = mesh_create_file("data/armadillo.tri", 30000);
+
+  mat4 m;
+  mat4_identity(m);
+  bvh_inst_create(&mesh_inst, curr_mesh->bvh, 0, m);
 }
 
 bool update(float time)
@@ -118,7 +124,7 @@ bool update(float time)
           ray r;
           ray_create_primary(&r, (float)(i + x), (float)(j + y), &curr_view, &curr_cam);
           hit h = (hit){ .t = MAX_DISTANCE };
-          intersect_bvh(&r, curr_mesh->bvh, &h);
+          intersect_bvh_inst(&r, &mesh_inst, &h);
           vec3 c = (h.t < MAX_DISTANCE) ?
             (vec3){ h.u, h.v, 1.0f - h.u - h.v } : (vec3){ 0.0f, 0.0f, 0.0f };
           set_pix(i + x, j + y, c);

@@ -216,7 +216,23 @@ void bvh_inst_create(bvh_inst *bi, bvh *b, size_t idx, const mat4 transform)
   bi->bvh = b;
   bi->inst_idx = idx;
 
-  // TODO Calc world space bounds
+  // Store root node bounds transformed into world space
+  aabb a = aabb_init();
+  vec3 mi = b->nodes[0].min;
+  vec3 ma = b->nodes[0].max;
+  
+  aabb_grow(&a, mat4_mul_pos(transform, (vec3){ mi.x, mi.y, mi.z }));
+  aabb_grow(&a, mat4_mul_pos(transform, (vec3){ ma.x, mi.y, mi.z }));
+  aabb_grow(&a, mat4_mul_pos(transform, (vec3){ mi.x, ma.y, mi.z }));
+  aabb_grow(&a, mat4_mul_pos(transform, (vec3){ ma.x, ma.y, mi.z }));
+  aabb_grow(&a, mat4_mul_pos(transform, (vec3){ mi.x, mi.y, ma.z }));
+  aabb_grow(&a, mat4_mul_pos(transform, (vec3){ ma.x, mi.y, ma.z }));
+  aabb_grow(&a, mat4_mul_pos(transform, (vec3){ mi.x, ma.y, ma.z }));
+  aabb_grow(&a, mat4_mul_pos(transform, (vec3){ ma.x, ma.y, ma.z }));
 
+  bi->min = a.min;
+  bi->max = a.max;
+
+  // Store inverse for ray transformation later on
   mat4_inv(bi->inv_transform, transform);
 }
