@@ -34,7 +34,7 @@ typedef struct bvh_inst {
 
 bvh   *bvh_init(mesh *m);
 void  bvh_create(bvh *b);
-void  bvh_refit(bvh *b);
+void  bvh_update(bvh *b);
 void  bvh_release(bvh *b);
 
 void  bvh_inst_create(bvh_inst *bi, bvh *b, size_t idx, const mat4 transform);
