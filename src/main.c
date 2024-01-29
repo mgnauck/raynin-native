@@ -27,7 +27,7 @@ cfg           config;
 view          curr_view;
 cam           curr_cam;
 mesh          *curr_mesh;
-bvh_inst      mesh_inst;
+bvh_inst      instances[2];
 
 bool          orbit_cam = false;
 
@@ -100,9 +100,15 @@ void init(uint32_t width, uint32_t height)
   
   curr_mesh = mesh_create_file("data/armadillo.tri", 30000);
 
-  mat4 m;
-  mat4_identity(m);
-  bvh_inst_create(&mesh_inst, curr_mesh->bvh, 0, m);
+  mat4 rm, tm, m;
+  mat4_rot_y(rm, 0.5f * PI);
+  mat4_trans(tm, (vec3){ -1.5f, 0.0f, 0.0f });
+  mat4_mul(m, tm, rm);
+  bvh_create_inst(&instances[0], curr_mesh->bvh, 0, m);
+  mat4_rot_y(rm, -0.5f * PI);
+  mat4_trans(tm, (vec3){ 1.5f, 0.0f, 0.0f });
+  mat4_mul(m, tm, rm);
+  bvh_create_inst(&instances[1], curr_mesh->bvh, 0, m);
 }
 
 bool update(float time)
@@ -124,7 +130,8 @@ bool update(float time)
           ray r;
           ray_create_primary(&r, (float)(i + x), (float)(j + y), &curr_view, &curr_cam);
           hit h = (hit){ .t = MAX_DISTANCE };
-          intersect_bvh_inst(&r, &mesh_inst, &h);
+          intersect_bvh_inst(&r, &instances[0], &h);
+          intersect_bvh_inst(&r, &instances[1], &h);
           vec3 c = (h.t < MAX_DISTANCE) ?
             (vec3){ h.u, h.v, 1.0f - h.u - h.v } : (vec3){ 0.0f, 0.0f, 0.0f };
           set_pix(i + x, j + y, c);

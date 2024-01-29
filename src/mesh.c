@@ -14,20 +14,23 @@ mesh *mesh_init(size_t tri_cnt)
   return m;
 }
 
+void mesh_create_bvh(mesh *m)
+{
+  m->bvh = malloc(sizeof(*m->bvh));
+
+  bvh_init(m->bvh, m);
+  bvh_build(m->bvh);
+}
+
 void mesh_release(mesh *m)
 {
   bvh_release(m->bvh);
-  
+
+  free(m->bvh);
   free(m->centers);
   free(m->tris_data);
   free(m->tris);
   free(m);
-}
-
-void mesh_create_bvh(mesh *m)
-{
-  m->bvh = bvh_init(m);
-  bvh_create(m->bvh);
 }
 
 mesh *mesh_create_file(const char *path, size_t tri_cnt)

@@ -32,11 +32,11 @@ typedef struct bvh_inst {
   size_t    mat_ofs;
 } bvh_inst;
 
-bvh   *bvh_init(mesh *m);
-void  bvh_create(bvh *b);
+void  bvh_init(bvh *b, mesh *m);
+void  bvh_build(bvh *b);
 void  bvh_update(bvh *b);
 void  bvh_release(bvh *b);
 
-void  bvh_inst_create(bvh_inst *bi, bvh *b, size_t idx, const mat4 transform);
+void  bvh_create_inst(bvh_inst *bi, bvh *b, size_t idx, const mat4 transform);
 
 #endif

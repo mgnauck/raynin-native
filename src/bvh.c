@@ -156,17 +156,15 @@ void subdivide_node(bvh *b, bvh_node *n)
   subdivide_node(b, right_child);
 }
 
-bvh *bvh_init(mesh *m)
+void bvh_init(bvh *b, mesh *m)
 {
-  bvh *b = malloc(sizeof(*b));
-  b->nodes = aligned_alloc(64, (2 * m->tri_cnt) * sizeof(*b->nodes));
+  // Would be 2 * tri_cnt - 1 but we skip one node
+  b->nodes = aligned_alloc(64, 2 * m->tri_cnt * sizeof(*b->nodes));
   b->indices = malloc(m->tri_cnt * sizeof(*b->indices));
   b->mesh = m;
-
-  return b;
 }
 
-void bvh_create(bvh *b)
+void bvh_build(bvh *b)
 {
   b->node_cnt = 0;
 
@@ -184,7 +182,7 @@ void bvh_create(bvh *b)
   subdivide_node(b, root);
 }
 
-void bvh_upddate(bvh *b)
+void bvh_update(bvh *b)
 {
   for(int32_t i=b->node_cnt; i>=0; i--) {
     if(i == 1)
@@ -208,10 +206,9 @@ void bvh_release(bvh *b)
 {
   free(b->indices);
   free(b->nodes);
-  free(b);
 }
 
-void bvh_inst_create(bvh_inst *bi, bvh *b, size_t idx, const mat4 transform)
+void bvh_create_inst(bvh_inst *bi, bvh *b, size_t idx, const mat4 transform)
 {
   bi->bvh = b;
   bi->inst_idx = idx;
