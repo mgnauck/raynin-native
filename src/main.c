@@ -10,13 +10,16 @@
 #include "cam.h"
 #include "mesh.h"
 #include "bvh.h"
+#include "tlas.h"
 #include "intersect.h"
 
-#define WIDTH       800
-#define HEIGHT      600
+#define WIDTH         800
+#define HEIGHT        600
 
-#define MOVE_VEL    0.2f
-#define LOOK_VEL    0.005f
+#define MOVE_VEL      0.2f
+#define LOOK_VEL      0.005f
+
+#define INSTANCE_CNT  10
 
 //#define NO_KEY_OR_MOUSE_HANDLING
 
@@ -27,7 +30,8 @@ cfg           config;
 view          curr_view;
 cam           curr_cam;
 mesh          *curr_mesh;
-bvh_inst      instances[2];
+bvh_inst      instances[INSTANCE_CNT];
+tlas          scene_tlas;
 
 bool          orbit_cam = false;
 
@@ -100,15 +104,14 @@ void init(uint32_t width, uint32_t height)
   
   curr_mesh = mesh_create_file("data/armadillo.tri", 30000);
 
-  mat4 rm, tm, m;
-  mat4_rot_y(rm, 0.5f * PI);
-  mat4_trans(tm, (vec3){ -1.5f, 0.0f, 0.0f });
-  mat4_mul(m, tm, rm);
-  bvh_create_inst(&instances[0], curr_mesh->bvh, 0, m);
-  mat4_rot_y(rm, -0.5f * PI);
-  mat4_trans(tm, (vec3){ 1.5f, 0.0f, 0.0f });
-  mat4_mul(m, tm, rm);
-  bvh_create_inst(&instances[1], curr_mesh->bvh, 0, m);
+  mat4 m;  
+  for(size_t i=0; i<INSTANCE_CNT; i++) {
+    mat4_trans(m, vec3_scale(vec3_sub(vec3_rand(), (vec3){ 0.5f, 0.5f, 0.5f }), 5));
+    bvh_create_inst(&instances[i], curr_mesh->bvh, i, m);
+  }
+
+  tlas_init(&scene_tlas, instances, INSTANCE_CNT);
+  tlas_build(&scene_tlas);
 }
 
 bool update(float time)
@@ -130,8 +133,8 @@ bool update(float time)
           ray r;
           ray_create_primary(&r, (float)(i + x), (float)(j + y), &curr_view, &curr_cam);
           hit h = (hit){ .t = MAX_DISTANCE };
-          intersect_bvh_inst(&r, &instances[0], &h);
-          intersect_bvh_inst(&r, &instances[1], &h);
+          for(size_t c=0; c<INSTANCE_CNT; c++)
+            intersect_bvh_inst(&r, &instances[c], &h);
           vec3 c = (h.t < MAX_DISTANCE) ?
             (vec3){ h.u, h.v, 1.0f - h.u - h.v } : (vec3){ 0.0f, 0.0f, 0.0f };
           set_pix(i + x, j + y, c);
@@ -145,6 +148,7 @@ bool update(float time)
 
 void release()
 {
+  tlas_release(&scene_tlas);
   mesh_release(curr_mesh);
 }
 
