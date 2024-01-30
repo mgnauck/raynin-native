@@ -13,13 +13,13 @@
 #include "tlas.h"
 #include "intersect.h"
 
-#define WIDTH         800
-#define HEIGHT        600
+#define WIDTH         1024
+#define HEIGHT        768
 
 #define MOVE_VEL      0.2f
 #define LOOK_VEL      0.005f
 
-#define INSTANCE_CNT  15
+#define INSTANCE_CNT  256
 
 //#define NO_KEY_OR_MOUSE_HANDLING
 
@@ -32,6 +32,10 @@ cam           curr_cam;
 mesh          *curr_mesh;
 bvh_inst      instances[INSTANCE_CNT];
 tlas          scene_tlas;
+
+vec3          positions[INSTANCE_CNT];
+vec3          directions[INSTANCE_CNT];
+vec3          orientations[INSTANCE_CNT];
 
 bool          orbit_cam = false;
 
@@ -98,33 +102,71 @@ void init(uint32_t width, uint32_t height)
   config = (cfg){ width, height, 5, 5 };
   
   curr_cam = (cam){ .vert_fov = 60.0f, .foc_dist = 3.0f, .foc_angle = 0.0f };
-  cam_set(&curr_cam, (vec3){ 0.0f, 0.0f, -10.0f }, (vec3){ 0.0f, 0.0f, 0.0f });
+  cam_set(&curr_cam, (vec3){ 0.0f, 0.0f, -6.5f }, (vec3){ 0.0f, 0.0f, 2.0f });
   
   view_calc(&curr_view, config.width, config.height, &curr_cam);
   
   curr_mesh = mesh_create_file("data/armadillo.tri", 30000);
-
-  mat4 m;  
-  for(size_t i=0; i<INSTANCE_CNT; i++) {
-    mat4_trans(m, vec3_scale(vec3_sub(vec3_rand(), (vec3){ 0.5f, 0.5f, 0.5f }), 8.0f));
-    bvh_create_inst(&instances[i], curr_mesh->bvh, i, m);
-  }
+  //curr_mesh = mesh_create_file("data/unity.tri", 12582);
 
   tlas_init(&scene_tlas, instances, INSTANCE_CNT);
-  tlas_build(&scene_tlas);
+
+  for(size_t i=0; i<INSTANCE_CNT; i++) {
+	  positions[i] = vec3_scale(vec3_sub(vec3_rand(), (vec3){ 0.5f, 0.5f, 0.5f }), 4.0f);
+	  directions[i] = vec3_scale(vec3_unit(positions[i]), 0.05f);
+	  orientations[i] = vec3_scale(vec3_rand(), 2.5f);
+  }
 }
 
 bool update(float time)
 {
   if(orbit_cam) {
     float s = 0.3f;
-    float r = 10.0f;
+    float r = 8.0f;
     float h = 0.0f;
     vec3 pos = (vec3){ r * sinf(time * s), h * sinf(time * s * 0.7f), r * cosf(time * s) };
     cam_set(&curr_cam, pos, vec3_neg(pos));
     view_calc(&curr_view, config.width, config.height, &curr_cam);
   }
 
+  uint64_t start = SDL_GetTicks64();
+  for(size_t i=0; i<INSTANCE_CNT; i++) {
+    mat4 transform;
+		
+    mat4 rotx, roty, rotz;
+    mat4_rot_x(rotx, orientations[i].x);
+    mat4_rot_y(roty, orientations[i].y);
+    mat4_rot_z(rotz, orientations[i].z);
+    mat4_mul(transform, rotx, roty);
+    mat4_mul(transform, transform, rotz);
+     
+    mat4 scale;
+    mat4_scale(scale, 0.2f);
+    mat4_mul(transform, transform, scale);
+    
+    mat4 translation;
+    mat4_trans(translation, positions[i]);
+    mat4_mul(transform, translation, transform);
+
+    bvh_create_inst(&instances[i], curr_mesh->bvh, i, transform);
+		
+    positions[i] = vec3_add(positions[i], directions[i]);
+    orientations[i] = vec3_add(orientations[i], directions[i]);
+
+		if(positions[i].x < -3.0f || positions[i].x > 3.0f)
+      directions[i].x *= -1.0f;
+		if(positions[i].y < -3.0f || positions[i].y > 3.0f)
+      directions[i].y *= -1.0f;
+		if(positions[i].z < -3.0f || positions[i].z > 3.0f)
+      directions[i].z *= -1.0f;
+	}
+  SDL_Log("[UPDATE] %lu ms", SDL_GetTicks64() - start);
+  
+  start = SDL_GetTicks64();
+  tlas_build(&scene_tlas);
+  SDL_Log("[TLAS] %lu ms", SDL_GetTicks64() - start);
+
+  start = SDL_GetTicks64();
 #define BLOCK_SIZE 4
   for(size_t j=0; j<HEIGHT; j+=BLOCK_SIZE) {
     for(size_t i=0; i<WIDTH; i+=BLOCK_SIZE) {
@@ -133,8 +175,7 @@ bool update(float time)
           ray r;
           ray_create_primary(&r, (float)(i + x), (float)(j + y), &curr_view, &curr_cam);
           hit h = (hit){ .t = MAX_DISTANCE };
-          for(size_t c=0; c<INSTANCE_CNT; c++)
-            intersect_bvh_inst(&r, &instances[c], &h);
+          intersect_tlas(&r, &scene_tlas, &h);
           vec3 c = (h.t < MAX_DISTANCE) ?
             (vec3){ h.u, h.v, 1.0f - h.u - h.v } : (vec3){ 0.0f, 0.0f, 0.0f };
           set_pix(i + x, j + y, c);
@@ -142,7 +183,8 @@ bool update(float time)
       }
     }
   }
-
+  SDL_Log("[RENDER] %lu ms", SDL_GetTicks64() - start);
+  
   return true;
 }
 
@@ -200,7 +242,7 @@ int main(int argc, char *argv[])
 
     uint64_t frame = SDL_GetTicks64() - last;
     char title[256];
-    snprintf(title, 256, "%ld ms / %6.3f", frame, 1000.0f / frame);
+    snprintf(title, 256, "%ld ms / %6.3f / %4.2fM rays/s", frame, 1000.0f / frame, WIDTH * HEIGHT / (frame * 1000.0f));
     SDL_SetWindowTitle(window, title);
     last = SDL_GetTicks64();
 

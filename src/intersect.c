@@ -4,6 +4,7 @@
 #include "tri.h"
 #include "mesh.h"
 #include "bvh.h"
+#include "tlas.h"
 
 // GPU efficient slabs test [Laine et al. 2013; Afra et al. 2016]
 // https://www.jcgt.org/published/0007/03/04/paper-lowres.pdf
@@ -117,4 +118,51 @@ void intersect_bvh_inst(const ray *r, const bvh_inst *bi, hit *h)
   ray_transform(&r_obj, bi->inv_transform, r);
 
   intersect_bvh(&r_obj, bi->bvh, h);
+}
+
+void intersect_tlas(const ray *r, const tlas *t, hit *h)
+{
+#define NODE_STACK_SIZE 64
+  uint32_t  stack_pos = 0;
+  tlas_node  *node_stack[NODE_STACK_SIZE];
+  tlas_node  *node = &t->nodes[0];
+
+  while(true) {
+    if(node->children == 0) {
+      // Leaf node with a single bvh instance assigned
+      intersect_bvh_inst(r, &t->instances[node->bvh_inst], h);
+      if(stack_pos > 0)
+        node = node_stack[--stack_pos];
+      else
+        break;
+    } else {
+      // Interior node, check aabbs of children
+      tlas_node *c1 = &t->nodes[node->children & 0xffff];
+      tlas_node *c2 = &t->nodes[node->children >> 16];
+      float     d1 = intersect_aabb(r, h->t, c1->min, c1->max);
+      float     d2 = intersect_aabb(r, h->t, c2->min, c2->max);
+      if(d1 > d2) {
+        // Swap for nearer child
+        float td = d1;
+        d1 = d2;
+        d2 = td;
+        tlas_node *tc = c1;
+        c1 = c2;
+        c2 = tc;
+      }
+      if(d1 == MAX_DISTANCE) {
+        // Did miss both children, so check stack
+        if(stack_pos > 0)
+          node = node_stack[--stack_pos];
+        else
+          break;
+      } else {
+        // Continue with nearer child node
+        node = c1;
+        // Push farther child on stack if also a hit
+        if(d2 < MAX_DISTANCE)
+          node_stack[stack_pos++] = c2;
+      }
+    }
+  }
 }
