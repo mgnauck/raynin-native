@@ -19,7 +19,7 @@
 #define MOVE_VEL      0.2f
 #define LOOK_VEL      0.005f
 
-#define INSTANCE_CNT  10
+#define INSTANCE_CNT  15
 
 //#define NO_KEY_OR_MOUSE_HANDLING
 
@@ -98,7 +98,7 @@ void init(uint32_t width, uint32_t height)
   config = (cfg){ width, height, 5, 5 };
   
   curr_cam = (cam){ .vert_fov = 60.0f, .foc_dist = 3.0f, .foc_angle = 0.0f };
-  cam_set(&curr_cam, (vec3){ 0.0f, 0.0f, -5.0f }, (vec3){ 0.0f, 0.0f, 0.0f });
+  cam_set(&curr_cam, (vec3){ 0.0f, 0.0f, -10.0f }, (vec3){ 0.0f, 0.0f, 0.0f });
   
   view_calc(&curr_view, config.width, config.height, &curr_cam);
   
@@ -106,7 +106,7 @@ void init(uint32_t width, uint32_t height)
 
   mat4 m;  
   for(size_t i=0; i<INSTANCE_CNT; i++) {
-    mat4_trans(m, vec3_scale(vec3_sub(vec3_rand(), (vec3){ 0.5f, 0.5f, 0.5f }), 5));
+    mat4_trans(m, vec3_scale(vec3_sub(vec3_rand(), (vec3){ 0.5f, 0.5f, 0.5f }), 8.0f));
     bvh_create_inst(&instances[i], curr_mesh->bvh, i, m);
   }
 
@@ -118,7 +118,7 @@ bool update(float time)
 {
   if(orbit_cam) {
     float s = 0.3f;
-    float r = -5.0f;
+    float r = 10.0f;
     float h = 0.0f;
     vec3 pos = (vec3){ r * sinf(time * s), h * sinf(time * s * 0.7f), r * cosf(time * s) };
     cam_set(&curr_cam, pos, vec3_neg(pos));

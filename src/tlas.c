@@ -3,16 +3,20 @@
 #include "sutil.h"
 #include "bvh.h"
 #include "aabb.h"
-#include <SDL.h>
 
 void tlas_init(tlas *t, bvh_inst *instances, size_t inst_cnt)
 {
-  t->nodes = aligned_alloc(64, 2 * inst_cnt * sizeof(*t->nodes)); 
+  // We actually only need 2 * inst_cnt - 1 nodes. But we do allocate space
+  // for 2 more: We will leave node 1 empty for mem aligment purposes.
+  // Additionally we need another node slot during agglomerative clustering.
+  // Here the root node will be added last (at the end of the array) and then
+  // moved to the beginning, so it sits at slot 0 finally.
+  t->nodes = aligned_alloc(64, (2 * inst_cnt + 1) * sizeof(*t->nodes)); 
   t->instances = instances;
   t->inst_cnt = inst_cnt;
 }
 
-int32_t find_best_node(tlas_node *nodes, size_t idx, size_t *node_indices,
+size_t find_best_node(tlas_node *nodes, size_t idx, size_t *node_indices,
     size_t node_indices_cnt)
 {
   float best_area = FLT_MAX;
@@ -45,19 +49,22 @@ void tlas_build(tlas *t)
   size_t node_indices_cnt = t->inst_cnt;
   size_t node_indices[t->inst_cnt];
 
+  // Reserve space for root node + skipped 1st node
+  size_t ofs = 2;
+
   // Construct leaf node for each bvh instance
   for(size_t i=0; i<t->inst_cnt; i++) {
-    tlas_node *n = &t->nodes[1 + i];
+    tlas_node *n = &t->nodes[ofs + i];
     bvh_inst *bi = &t->instances[i];
     n->min = bi->min;
     n->max = bi->max;
     n->children = 0;
     n->bvh_inst = i;
-    node_indices[i] = 1 + i;
+    node_indices[i] = ofs + i;
   }
 
-  // Account for leaf nodes and reserved root
-  t->node_cnt = 1 + t->inst_cnt;
+  // Account for nodes so far
+  t->node_cnt = ofs + t->inst_cnt;
 
   // Bottom up combining of tlas nodes
   size_t a = 0;
@@ -70,12 +77,13 @@ void tlas_build(tlas *t)
 
       tlas_node *node_a = &t->nodes[idx_a];
       tlas_node *node_b = &t->nodes[idx_b];
-      tlas_node *new_node = &t->nodes[t->node_cnt];
 
-      // Each child node index gets 16 bits
-      new_node->children = idx_b << 16 | idx_a;
+      // Claim new node which is the combination of node A and B
+      tlas_node *new_node = &t->nodes[t->node_cnt];
       new_node->min = vec3_min(node_a->min, node_b->min);
       new_node->max = vec3_max(node_a->max, node_b->max);
+      // Each child node index gets 16 bits
+      new_node->children = idx_b << 16 | idx_a;
 
       // Replace node A with newly created combined node
       node_indices[a] = t->node_cnt++;
@@ -93,10 +101,8 @@ void tlas_build(tlas *t)
     }
   }
 
-  // Root node was formed last, move it to reserved index 0
+  // Root node was formed last (at 2*n+1), move it to reserved index 0
   t->nodes[0] = t->nodes[--t->node_cnt];
-
-  SDL_Log("Node count: %zu / %zu (b: %zu)", t->node_cnt, node_indices[a], b);
 }
 
 void tlas_release(tlas *t)
