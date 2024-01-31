@@ -1,5 +1,6 @@
 #include "mesh.h"
 #include <stdio.h>
+#include <string.h>
 #include "sutil.h"
 #include "tri.h"
 #include "bvh.h"
@@ -33,39 +34,69 @@ void mesh_release(mesh *m)
   free(m);
 }
 
-mesh *mesh_create_file(const char *path, size_t tri_cnt)
+mesh *mesh_load_obj(const char *path, size_t tri_cnt, size_t vertex_cnt, size_t normal_cnt, size_t uv_cnt)
 {
   mesh *m = mesh_init(tri_cnt);
+
+  float *vertices = malloc(vertex_cnt * 3 * sizeof(float));
+  float *pvertices = vertices;
+
+  float *normals = malloc(normal_cnt * 3 * sizeof(float));
+  float *pnormals = normals;
+
+  float *uvs = malloc(uv_cnt * 2 * sizeof(float));
+  float *puvs = uvs;
+
+  size_t cnt = 0;
 
   FILE *f = fopen(path, "r");
-  float v[9];
-  for(size_t i=0; i<tri_cnt; i++) {
-    fscanf(f, "%f %f %f %f %f %f %f %f %f\n",
-        &v[0], &v[1], &v[2], &v[3], &v[4], &v[5], &v[6], &v[7], &v[8]);
-    tri *tri = &m->tris[i];
-    tri->v[0] = (vec3){ v[0], v[1], v[2] };
-    tri->v[1] = (vec3){ v[3], v[4], v[5] };
-    tri->v[2] = (vec3){ v[6], v[7], v[8] };
-    m->centers[i] = tri_calc_center(tri);
+  if(!f)
+    exit(0);
+
+  while(!feof(f)) {
+#define LINE_SIZE 256
+    char line[LINE_SIZE] = { 0 };
+    fgets(line, LINE_SIZE - 1, f);
+
+    if(line == strstr(line, "vt ")) {
+			sscanf(line + 3, "%f %f", puvs, puvs + 1);
+      puvs += 2;
+    } else if(line == strstr(line, "vn ")) {
+			sscanf(line + 3, "%f %f %f", pnormals, pnormals + 1, pnormals + 2);
+      pnormals += 3;
+    } else if(line[0] == 'v') {
+			sscanf(line + 2, "%f %f %f", pvertices, pvertices + 1, pvertices + 2);
+      pvertices += 3;
+    }
+
+    if(line[0] == 'f') {
+      int32_t a, b, c, d, e, f, g, h, i;
+			sscanf(line + 2, "%i/%i/%i %i/%i/%i %i/%i/%i", &a, &b, &c, &d, &e, &f, &g, &h, &i);
+
+      tri *tri = &m->tris[cnt];
+      tri->v[0] = (vec3){ vertices[(a - 1) * 3], vertices[(a - 1) * 3 + 1], vertices[(a - 1) * 3 + 2] };
+      tri->v[1] = (vec3){ vertices[(d - 1) * 3], vertices[(d - 1) * 3 + 1], vertices[(d - 1) * 3 + 2] };
+      tri->v[2] = (vec3){ vertices[(g - 1) * 3], vertices[(g - 1) * 3 + 1], vertices[(g - 1) * 3 + 2] };
+      m->centers[cnt] = tri_calc_center(tri);
+
+      tri_data *tri_data = &m->tris_data[cnt++];
+      tri_data->n[0] = (vec3){ normals[(c - 1) * 3], normals[(c - 1) * 3 + 1], normals[(c - 1) * 3 + 2] };
+      tri_data->n[1] = (vec3){ normals[(f - 1) * 3], normals[(f - 1) * 3 + 1], normals[(f - 1) * 3 + 2] };
+      tri_data->n[2] = (vec3){ normals[(i - 1) * 3], normals[(i - 1) * 3 + 1], normals[(i - 1) * 3 + 2] };
+      tri_data->u[0] = uvs[(b - 1) * 2];
+      tri_data->v[0] = uvs[(b - 1) * 2 + 1];
+      tri_data->u[1] = uvs[(e - 1) * 2];
+      tri_data->v[1] = uvs[(e - 1) * 2 + 1];
+      tri_data->u[2] = uvs[(h - 1) * 2];
+      tri_data->v[2] = uvs[(h - 1) * 2 + 1]; 
+    }
   }
+
   fclose(f);
 
-  mesh_create_bvh(m);
-
-  return m;
-}
-
-mesh *mesh_create_rand(size_t tri_cnt)
-{
-  mesh *m = mesh_init(tri_cnt);
-
-  for(size_t i=0; i<m->tri_cnt; i++) {
-    tri *tri = &m->tris[i];
-    tri->v[0] = vec3_sub(vec3_scale(vec3_rand(), 16.0f), (vec3){ 8.0f, 8.0f, 8.0f });
-    tri->v[1] = vec3_add(tri->v[0], vec3_rand());
-    tri->v[2] = vec3_add(tri->v[0], vec3_rand());
-    m->centers[i] = tri_calc_center(tri);
-  }
+  free(uvs);
+  free(normals);
+  free(vertices);
 
   mesh_create_bvh(m);
 

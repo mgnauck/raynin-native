@@ -5,6 +5,7 @@
 #include "mutil.h"
 #include "vec3.h"
 #include "ray.h"
+#include "tri.h"
 #include "cfg.h"
 #include "view.h"
 #include "cam.h"
@@ -38,6 +39,7 @@ vec3          directions[INSTANCE_CNT];
 vec3          orientations[INSTANCE_CNT];
 
 bool          orbit_cam = false;
+bool          paused = false;
 
 void set_pix(uint32_t x, uint32_t y, vec3 v)
 {
@@ -52,6 +54,9 @@ void handle_keypress(const SDL_Keysym *key)
   switch(key->sym) {
     case SDLK_ESCAPE:
       quit = true;
+      break;
+    case SDLK_SPACE:
+      paused = !paused;
       break;
     case SDLK_a:
       curr_cam.eye = vec3_add(curr_cam.eye, vec3_scale(curr_cam.right, -MOVE_VEL));
@@ -106,8 +111,8 @@ void init(uint32_t width, uint32_t height)
   
   view_calc(&curr_view, config.width, config.height, &curr_cam);
   
-  curr_mesh = mesh_create_file("data/armadillo.tri", 30000);
-  //curr_mesh = mesh_create_file("data/unity.tri", 12582);
+  //curr_mesh = mesh_load_obj("data/teapot.obj", 1024, 892, 734, 296);
+  curr_mesh = mesh_load_obj("data/dragon.obj", 19332, 11042, 11042, 11042);
 
   tlas_init(&scene_tlas, instances, INSTANCE_CNT);
 
@@ -141,7 +146,7 @@ bool update(float time)
     mat4_mul(transform, transform, rotz);
      
     mat4 scale;
-    mat4_scale(scale, 0.2f);
+    mat4_scale(scale, 0.002f);
     mat4_mul(transform, transform, scale);
     
     mat4 translation;
@@ -149,16 +154,18 @@ bool update(float time)
     mat4_mul(transform, translation, transform);
 
     bvh_create_inst(&instances[i], curr_mesh->bvh, i, transform);
-		
-    positions[i] = vec3_add(positions[i], directions[i]);
-    orientations[i] = vec3_add(orientations[i], directions[i]);
+	
+    if(!paused) {
+      positions[i] = vec3_add(positions[i], directions[i]);
+      orientations[i] = vec3_add(orientations[i], directions[i]);
 
-		if(positions[i].x < -3.0f || positions[i].x > 3.0f)
-      directions[i].x *= -1.0f;
-		if(positions[i].y < -3.0f || positions[i].y > 3.0f)
-      directions[i].y *= -1.0f;
-		if(positions[i].z < -3.0f || positions[i].z > 3.0f)
-      directions[i].z *= -1.0f;
+      if(positions[i].x < -3.0f || positions[i].x > 3.0f)
+        directions[i].x *= -1.0f;
+      if(positions[i].y < -3.0f || positions[i].y > 3.0f)
+        directions[i].y *= -1.0f;
+      if(positions[i].z < -3.0f || positions[i].z > 3.0f)
+        directions[i].z *= -1.0f;
+    }
 	}
   SDL_Log("[UPDATE] %lu ms", SDL_GetTicks64() - start);
   
@@ -176,8 +183,21 @@ bool update(float time)
           ray_create_primary(&r, (float)(i + x), (float)(j + y), &curr_view, &curr_cam);
           hit h = (hit){ .t = MAX_DISTANCE };
           intersect_tlas(&r, &scene_tlas, &h);
-          vec3 c = (h.t < MAX_DISTANCE) ?
-            (vec3){ h.u, h.v, 1.0f - h.u - h.v } : (vec3){ 0.0f, 0.0f, 0.0f };
+
+          /*vec3 c = (h.t < MAX_DISTANCE) ?
+            (vec3){ h.u, h.v, 1.0f - h.u - h.v } : (vec3){ 0.0f, 0.0f, 0.0f };*/
+
+          vec3 c = { 0, 0, 0 };
+          if(h.t < MAX_DISTANCE) {
+            size_t tri_idx = h.id & 0xfffff;
+            size_t inst_idx = h.id >> 20;
+            tri_data* data = &curr_mesh->tris_data[tri_idx];
+            bvh_inst *inst = &instances[inst_idx];
+            vec3 nrm = vec3_add(vec3_add(vec3_scale(data->n[1], h.u), vec3_scale(data->n[2], h.v)), vec3_scale(data->n[0], 1.0f - h.u - h.v));
+            nrm = vec3_unit(mat4_mul_dir(inst->transform, nrm));
+            c = vec3_scale(vec3_add(nrm, (vec3){ 1, 1, 1 }), 0.5f);
+          }
+
           set_pix(i + x, j + y, c);
         }
       }

@@ -20,7 +20,6 @@ mesh  *mesh_init(size_t tri_cnt);
 void  mesh_create_bvh(mesh *m);
 void  mesh_release(mesh *m);
 
-mesh  *mesh_create_file(const char *path, size_t tri_cnt);
-mesh  *mesh_create_rand(size_t tri_cnt);
+mesh  *mesh_load_obj(const char *path, size_t tri_cnt, size_t vertex_cnt, size_t normal_cnt, size_t uv_cnt);
 
 #endif

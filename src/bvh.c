@@ -230,6 +230,9 @@ void bvh_create_inst(bvh_inst *bi, bvh *b, size_t idx, const mat4 transform)
   bi->min = a.min;
   bi->max = a.max;
 
-  // Store inverse for ray transformation later on
+  // Store transform and precalc inverse
+  for(size_t i=0; i<16; i++)
+    bi->transform[i] = transform[i];
+
   mat4_inv(bi->inv_transform, transform);
 }

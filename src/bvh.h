@@ -27,6 +27,7 @@ typedef struct bvh_inst {
   bvh       *bvh;
   vec3      max;
   size_t    inst_idx;
+  mat4      transform;
   mat4      inv_transform;
   mat_type  mat_type; // TODO
   size_t    mat_ofs;
