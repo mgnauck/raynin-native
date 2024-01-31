@@ -20,7 +20,7 @@ float intersect_aabb(const ray *r, float curr_t, vec3 min_ext, vec3 max_ext)
 }
 
 // MT ray-triangle: https://fileadmin.cs.lth.se/cs/Personal/Tomas_Akenine-Moller/raytri/
-void intersect_tri(const ray *r, const tri *t, size_t prim_id, hit *h)
+void intersect_tri(const ray *r, const tri *t, size_t id, hit *h)
 {
   // Vectors of two edges sharing vertex 0
   const vec3 edge1 = vec3_sub(t->v[1], t->v[0]);
@@ -58,11 +58,11 @@ void intersect_tri(const ray *r, const tri *t, size_t prim_id, hit *h)
     h->t = dist;
     h->u = u;
     h->v = v;
-    h->prim_id = prim_id;
+    h->id = id;
   }
 }
 
-void intersect_bvh(const ray *r, const bvh *b, hit *h)
+void intersect_bvh(const ray *r, const bvh *b, size_t inst_idx, hit *h)
 {
 #define NODE_STACK_SIZE 64
   uint32_t  stack_pos = 0;
@@ -74,7 +74,7 @@ void intersect_bvh(const ray *r, const bvh *b, hit *h)
       // Leaf node, check triangles
       for(size_t i=0; i<node->obj_cnt; i++) {
         size_t tri_idx = b->indices[node->start_idx + i];
-        intersect_tri(r, &b->mesh->tris[tri_idx], tri_idx, h);
+        intersect_tri(r, &b->mesh->tris[tri_idx], inst_idx << 20 | tri_idx, h);
       }
       if(stack_pos > 0)
         node = node_stack[--stack_pos];
@@ -117,7 +117,7 @@ void intersect_bvh_inst(const ray *r, const bvh_inst *bi, hit *h)
   ray r_obj;
   ray_transform(&r_obj, bi->inv_transform, r);
 
-  intersect_bvh(&r_obj, bi->bvh, h);
+  intersect_bvh(&r_obj, bi->bvh, bi->inst_idx, h);
 }
 
 void intersect_tlas(const ray *r, const tlas *t, hit *h)
