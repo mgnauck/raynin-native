@@ -10,21 +10,22 @@
 
 typedef struct ray ray;
 typedef struct tri tri;
-typedef struct bvh bvh;
+typedef struct bvh_node bvh_node;
 typedef struct bvh_inst bvh_inst;
-typedef struct tlas tlas;
+typedef struct tlas_node tlas_node;
 
 typedef struct hit {
   float   t;
   float   u;
   float   v;
-  size_t  id;
+  size_t  obj; // (mesh id << 20) | (inst id & 0xfffff)
+  size_t  tri;
 } hit;
 
 float intersect_aabb(const ray *r, float curr_dist, vec3 min_ext, vec3 max_ext);
-void  intersect_tri(const ray *r, const tri *t, size_t id, hit *h);
-void  intersect_bvh(const ray *r, const bvh *b, size_t inst_idx, hit *h);
+void  intersect_tri(const ray *r, const tri *t, size_t obj, size_t tri, hit *h);
+void  intersect_bvh(const ray *r, const bvh_node *nodes, const size_t *indices, const tri *tris, size_t obj, hit *h);
 void  intersect_bvh_inst(const ray *r, const bvh_inst *b, hit *h);
-void  intersect_tlas(const ray *r, const tlas *t, hit *h);
+void  intersect_tlas(const ray *r, const tlas_node *nodes, const bvh_inst *instances, hit *h);
 
 #endif

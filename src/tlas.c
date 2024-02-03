@@ -1,18 +1,21 @@
 #include "tlas.h"
 #include <float.h>
-#include "sutil.h"
-#include "bvh.h"
+#include "pool.h"
+#include "bvhinst.h"
 #include "aabb.h"
 
-void tlas_init(tlas *t, bvh_inst *instances, size_t inst_cnt)
+void tlas_init(tlas *t, size_t inst_cnt)
 {
   // We actually only need 2 * inst_cnt - 1 nodes. But we do allocate space
   // for 2 more: We will leave node 1 empty for mem aligment purposes.
   // Additionally we need another node slot during agglomerative clustering.
   // Here the root node will be added last (at the end of the array) and then
   // moved to the beginning, so it sits at slot 0 finally.
-  t->nodes = aligned_alloc(64, (2 * inst_cnt + 1) * sizeof(*t->nodes)); 
-  t->instances = instances;
+
+  t->nodes = pool_acquire(TLAS_NODE, 2 * inst_cnt + 1);
+  t->node_cnt = 0;
+
+  t->instances = pool_acquire(BVH_INST, inst_cnt);
   t->inst_cnt = inst_cnt;
 }
 
@@ -103,9 +106,4 @@ void tlas_build(tlas *t)
 
   // Root node was formed last (at 2*n+1), move it to reserved index 0
   t->nodes[0] = t->nodes[--t->node_cnt];
-}
-
-void tlas_release(tlas *t)
-{
-  free(t->nodes);
 }

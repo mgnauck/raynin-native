@@ -3,6 +3,7 @@
 #include <SDL.h>
 #include "sutil.h"
 #include "mutil.h"
+#include "pool.h"
 #include "vec3.h"
 #include "ray.h"
 #include "tri.h"
@@ -11,16 +12,18 @@
 #include "cam.h"
 #include "mesh.h"
 #include "bvh.h"
+#include "bvhinst.h"
 #include "tlas.h"
 #include "intersect.h"
 
-#define WIDTH         1024
-#define HEIGHT        768
+#define WIDTH     1024
+#define HEIGHT    768
 
-#define MOVE_VEL      0.2f
-#define LOOK_VEL      0.005f
+#define MOVE_VEL  0.2f
+#define LOOK_VEL  0.005f
 
-#define INSTANCE_CNT  256
+#define MESH_CNT  2
+#define INST_CNT  128
 
 //#define NO_KEY_OR_MOUSE_HANDLING
 
@@ -30,13 +33,14 @@ SDL_Surface   *screen;
 cfg           config;
 view          curr_view;
 cam           curr_cam;
-mesh          *curr_mesh;
-bvh_inst      instances[INSTANCE_CNT];
-tlas          scene_tlas;
 
-vec3          positions[INSTANCE_CNT];
-vec3          directions[INSTANCE_CNT];
-vec3          orientations[INSTANCE_CNT];
+mesh          meshes[MESH_CNT];
+bvh           bvhs[MESH_CNT];
+tlas          scene;
+
+vec3          positions[INST_CNT];
+vec3          directions[INST_CNT];
+vec3          orientations[INST_CNT];
 
 bool          orbit_cam = false;
 bool          paused = false;
@@ -104,6 +108,15 @@ void init(uint32_t width, uint32_t height)
 {
   pcg_srand(42u, 303u);
 
+  pool_init(7);
+  pool_reserve(TRI, sizeof(tri), 19332 + 1024);
+  pool_reserve(TRI_DATA, sizeof(tri_data), 19332 + 1024);
+  pool_reserve(INDEX, sizeof(size_t), 19332 + 1024);
+  pool_reserve(BVH_NODE, sizeof(bvh_node), 2 * (19332 + 1024));
+  pool_reserve(BVH_INST, sizeof(bvh_inst), INST_CNT);
+  pool_reserve(TLAS_NODE, sizeof(tlas_node), 2 * INST_CNT + 1);
+  //pool_reserve(MAT, sizeof(mat), mat_cnt);
+
   config = (cfg){ width, height, 5, 5 };
   
   curr_cam = (cam){ .vert_fov = 60.0f, .foc_dist = 3.0f, .foc_angle = 0.0f };
@@ -111,12 +124,17 @@ void init(uint32_t width, uint32_t height)
   
   view_calc(&curr_view, config.width, config.height, &curr_cam);
   
-  //curr_mesh = mesh_load_obj("data/teapot.obj", 1024, 892, 734, 296);
-  curr_mesh = mesh_load_obj("data/dragon.obj", 19332, 11042, 11042, 11042);
+  mesh_load_obj(&meshes[0], "data/teapot.obj", 1024, 892, 734, 296);
+  mesh_load_obj(&meshes[1], "data/dragon.obj", 19332, 11042, 11042, 11042);
 
-  tlas_init(&scene_tlas, instances, INSTANCE_CNT);
+  for(size_t i=0; i<MESH_CNT; i++) {
+    bvh_init(&bvhs[i], meshes[i].tri_cnt);
+    bvh_build(&bvhs[i], meshes[i].tris, meshes[i].tri_cnt);
+  }
 
-  for(size_t i=0; i<INSTANCE_CNT; i++) {
+  tlas_init(&scene, INST_CNT);
+
+  for(size_t i=0; i<INST_CNT; i++) {
 	  positions[i] = vec3_scale(vec3_sub(vec3_rand(), (vec3){ 0.5f, 0.5f, 0.5f }), 4.0f);
 	  directions[i] = vec3_scale(vec3_unit(positions[i]), 0.05f);
 	  orientations[i] = vec3_scale(vec3_rand(), 2.5f);
@@ -135,7 +153,7 @@ bool update(float time)
   }
 
   uint64_t start = SDL_GetTicks64();
-  for(size_t i=0; i<INSTANCE_CNT; i++) {
+  for(size_t i=0; i<INST_CNT; i++) {
     mat4 transform;
 		
     mat4 rotx, roty, rotz;
@@ -146,14 +164,14 @@ bool update(float time)
     mat4_mul(transform, transform, rotz);
      
     mat4 scale;
-    mat4_scale(scale, 0.002f);
+    mat4_scale(scale, (i % 2 == 1) ? 0.004f : 0.2f);
     mat4_mul(transform, transform, scale);
     
     mat4 translation;
     mat4_trans(translation, positions[i]);
     mat4_mul(transform, translation, transform);
 
-    bvh_create_inst(&instances[i], curr_mesh->bvh, i, transform);
+    bvh_inst_create(&scene.instances[i], i % 2, i, &meshes[i % 2], &bvhs[i % 2], transform);
 	
     if(!paused) {
       positions[i] = vec3_add(positions[i], directions[i]);
@@ -170,7 +188,7 @@ bool update(float time)
   SDL_Log("[UPDATE] %lu ms", SDL_GetTicks64() - start);
   
   start = SDL_GetTicks64();
-  tlas_build(&scene_tlas);
+  tlas_build(&scene);
   SDL_Log("[TLAS] %lu ms", SDL_GetTicks64() - start);
 
   start = SDL_GetTicks64();
@@ -182,22 +200,18 @@ bool update(float time)
           ray r;
           ray_create_primary(&r, (float)(i + x), (float)(j + y), &curr_view, &curr_cam);
           hit h = (hit){ .t = MAX_DISTANCE };
-          intersect_tlas(&r, &scene_tlas, &h);
-
-          /*vec3 c = (h.t < MAX_DISTANCE) ?
-            (vec3){ h.u, h.v, 1.0f - h.u - h.v } : (vec3){ 0.0f, 0.0f, 0.0f };*/
-
+          intersect_tlas(&r, scene.nodes, scene.instances, &h);
           vec3 c = { 0, 0, 0 };
           if(h.t < MAX_DISTANCE) {
-            size_t tri_idx = h.id & 0xfffff;
-            size_t inst_idx = h.id >> 20;
-            tri_data* data = &curr_mesh->tris_data[tri_idx];
-            bvh_inst *inst = &instances[inst_idx];
+            size_t mesh_idx = h.obj >> 20;
+            size_t inst_idx = h.obj & 0xfffff;
+            size_t tri_idx = h.tri;
+            tri_data* data = &meshes[mesh_idx].tris_data[tri_idx];
+            bvh_inst *inst = &scene.instances[inst_idx];
             vec3 nrm = vec3_add(vec3_add(vec3_scale(data->n[1], h.u), vec3_scale(data->n[2], h.v)), vec3_scale(data->n[0], 1.0f - h.u - h.v));
             nrm = vec3_unit(mat4_mul_dir(inst->transform, nrm));
             c = vec3_scale(vec3_add(nrm, (vec3){ 1, 1, 1 }), 0.5f);
           }
-
           set_pix(i + x, j + y, c);
         }
       }
@@ -210,8 +224,7 @@ bool update(float time)
 
 void release()
 {
-  tlas_release(&scene_tlas);
-  mesh_release(curr_mesh);
+  pool_release();
 }
 
 int main(int argc, char *argv[])

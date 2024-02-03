@@ -2,41 +2,20 @@
 #include <stdio.h>
 #include <string.h>
 #include "sutil.h"
+#include "pool.h"
 #include "tri.h"
-#include "bvh.h"
 
-mesh *mesh_init(size_t tri_cnt)
+void mesh_init(mesh *m, size_t tri_cnt)
 {
-  mesh *m = malloc(sizeof(*m));
   m->tri_cnt = tri_cnt;
-  m->tris = malloc(m->tri_cnt * sizeof(*m->tris));
-  m->tris_data = malloc(m->tri_cnt * sizeof(*m->tris_data));
-  m->centers = malloc(m->tri_cnt * sizeof(*m->centers));
-  return m;
+
+  m->tris = pool_acquire(TRI, tri_cnt);
+  m->tris_data = pool_acquire(TRI_DATA, tri_cnt);
 }
 
-void mesh_create_bvh(mesh *m)
+void mesh_load_obj(mesh *m, const char *path, size_t tri_cnt, size_t vertex_cnt, size_t normal_cnt, size_t uv_cnt)
 {
-  m->bvh = malloc(sizeof(*m->bvh));
-
-  bvh_init(m->bvh, m);
-  bvh_build(m->bvh);
-}
-
-void mesh_release(mesh *m)
-{
-  bvh_release(m->bvh);
-
-  free(m->bvh);
-  free(m->centers);
-  free(m->tris_data);
-  free(m->tris);
-  free(m);
-}
-
-mesh *mesh_load_obj(const char *path, size_t tri_cnt, size_t vertex_cnt, size_t normal_cnt, size_t uv_cnt)
-{
-  mesh *m = mesh_init(tri_cnt);
+  mesh_init(m, tri_cnt);
 
   float *vertices = malloc(vertex_cnt * 3 * sizeof(float));
   float *pvertices = vertices;
@@ -77,7 +56,7 @@ mesh *mesh_load_obj(const char *path, size_t tri_cnt, size_t vertex_cnt, size_t 
       tri->v[0] = (vec3){ vertices[(a - 1) * 3], vertices[(a - 1) * 3 + 1], vertices[(a - 1) * 3 + 2] };
       tri->v[1] = (vec3){ vertices[(d - 1) * 3], vertices[(d - 1) * 3 + 1], vertices[(d - 1) * 3 + 2] };
       tri->v[2] = (vec3){ vertices[(g - 1) * 3], vertices[(g - 1) * 3 + 1], vertices[(g - 1) * 3 + 2] };
-      m->centers[cnt] = tri_calc_center(tri);
+      tri_calc_center(tri);
 
       tri_data *tri_data = &m->tris_data[cnt++];
       tri_data->n[0] = (vec3){ normals[(c - 1) * 3], normals[(c - 1) * 3 + 1], normals[(c - 1) * 3 + 2] };
@@ -97,8 +76,4 @@ mesh *mesh_load_obj(const char *path, size_t tri_cnt, size_t vertex_cnt, size_t 
   free(uvs);
   free(normals);
   free(vertices);
-
-  mesh_create_bvh(m);
-
-  return m;
 }

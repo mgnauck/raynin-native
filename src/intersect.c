@@ -1,9 +1,11 @@
 #include "intersect.h"
+#include "pool.h"
 #include "mutil.h"
 #include "ray.h"
 #include "tri.h"
 #include "mesh.h"
 #include "bvh.h"
+#include "bvhinst.h"
 #include "tlas.h"
 
 // GPU efficient slabs test [Laine et al. 2013; Afra et al. 2016]
@@ -20,7 +22,7 @@ float intersect_aabb(const ray *r, float curr_t, vec3 min_ext, vec3 max_ext)
 }
 
 // MT ray-triangle: https://fileadmin.cs.lth.se/cs/Personal/Tomas_Akenine-Moller/raytri/
-void intersect_tri(const ray *r, const tri *t, size_t id, hit *h)
+void intersect_tri(const ray *r, const tri *t, size_t obj, size_t tri, hit *h)
 {
   // Vectors of two edges sharing vertex 0
   const vec3 edge1 = vec3_sub(t->v[1], t->v[0]);
@@ -58,23 +60,24 @@ void intersect_tri(const ray *r, const tri *t, size_t id, hit *h)
     h->t = dist;
     h->u = u;
     h->v = v;
-    h->id = id;
+    h->obj = obj;
+    h->tri = tri;
   }
 }
 
-void intersect_bvh(const ray *r, const bvh *b, size_t inst_idx, hit *h)
+void intersect_bvh(const ray *r, const bvh_node *nodes, const size_t *indices, const tri *tris, size_t obj, hit *h)
 {
 #define NODE_STACK_SIZE 64
-  uint32_t  stack_pos = 0;
-  bvh_node  *node_stack[NODE_STACK_SIZE];
-  bvh_node  *node = &b->nodes[0];
+  uint32_t        stack_pos = 0;
+  const bvh_node  *node_stack[NODE_STACK_SIZE];
+  const bvh_node  *node = nodes;
 
   while(true) {
     if(node->obj_cnt > 0) {
       // Leaf node, check triangles
       for(size_t i=0; i<node->obj_cnt; i++) {
-        size_t tri_idx = b->indices[node->start_idx + i];
-        intersect_tri(r, &b->mesh->tris[tri_idx], inst_idx << 20 | tri_idx, h);
+        size_t tri = indices[node->start_idx + i];
+        intersect_tri(r, &tris[tri], obj, tri, h);
       }
       if(stack_pos > 0)
         node = node_stack[--stack_pos];
@@ -82,16 +85,16 @@ void intersect_bvh(const ray *r, const bvh *b, size_t inst_idx, hit *h)
         break;
     } else {
       // Interior node, check aabbs of children
-      bvh_node *c1 = &b->nodes[node->start_idx];
-      bvh_node *c2 = &b->nodes[node->start_idx + 1];
-      float     d1 = intersect_aabb(r, h->t, c1->min, c1->max);
-      float     d2 = intersect_aabb(r, h->t, c2->min, c2->max);
+      const bvh_node *c1 = &nodes[node->start_idx];
+      const bvh_node *c2 = &nodes[node->start_idx + 1];
+      float d1 = intersect_aabb(r, h->t, c1->min, c1->max);
+      float d2 = intersect_aabb(r, h->t, c2->min, c2->max);
       if(d1 > d2) {
         // Swap for nearer child
         float td = d1;
         d1 = d2;
         d2 = td;
-        bvh_node *tc = c1;
+        const bvh_node *tc = c1;
         c1 = c2;
         c2 = tc;
       }
@@ -117,36 +120,37 @@ void intersect_bvh_inst(const ray *r, const bvh_inst *bi, hit *h)
   ray r_obj;
   ray_transform(&r_obj, bi->inv_transform, r);
 
-  intersect_bvh(&r_obj, bi->bvh, bi->inst_idx, h);
+  intersect_bvh(&r_obj, pool_ptr(BVH_NODE, bi->bvh_node_ofs),
+      pool_ptr(INDEX, bi->tri_ofs), pool_ptr(TRI, bi->tri_ofs), bi->id, h);
 }
 
-void intersect_tlas(const ray *r, const tlas *t, hit *h)
+void intersect_tlas(const ray *r, const tlas_node *nodes, const bvh_inst *instances, hit *h)
 {
 #define NODE_STACK_SIZE 64
-  uint32_t  stack_pos = 0;
-  tlas_node  *node_stack[NODE_STACK_SIZE];
-  tlas_node  *node = &t->nodes[0];
+  uint32_t        stack_pos = 0;
+  const tlas_node *node_stack[NODE_STACK_SIZE];
+  const tlas_node *node = nodes;
 
   while(true) {
     if(node->children == 0) {
       // Leaf node with a single bvh instance assigned
-      intersect_bvh_inst(r, &t->instances[node->bvh_inst], h);
+      intersect_bvh_inst(r, &instances[node->bvh_inst], h);
       if(stack_pos > 0)
         node = node_stack[--stack_pos];
       else
         break;
     } else {
       // Interior node, check aabbs of children
-      tlas_node *c1 = &t->nodes[node->children & 0xffff];
-      tlas_node *c2 = &t->nodes[node->children >> 16];
-      float     d1 = intersect_aabb(r, h->t, c1->min, c1->max);
-      float     d2 = intersect_aabb(r, h->t, c2->min, c2->max);
+      const tlas_node *c1 = &nodes[node->children & 0xffff];
+      const tlas_node *c2 = &nodes[node->children >> 16];
+      float d1 = intersect_aabb(r, h->t, c1->min, c1->max);
+      float d2 = intersect_aabb(r, h->t, c2->min, c2->max);
       if(d1 > d2) {
         // Swap for nearer child
         float td = d1;
         d1 = d2;
         d2 = td;
-        tlas_node *tc = c1;
+        const tlas_node *tc = c1;
         c1 = c2;
         c2 = tc;
       }

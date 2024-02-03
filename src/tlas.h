@@ -20,8 +20,7 @@ typedef struct tlas {
   bvh_inst  *instances;
 } tlas;
 
-void tlas_init(tlas *t, bvh_inst *instances, size_t inst_cnt);
+void tlas_init(tlas *t, size_t inst_cnt);
 void tlas_build(tlas *t);
-void tlas_release(tlas *t);
 
 #endif
