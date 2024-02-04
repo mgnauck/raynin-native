@@ -1,6 +1,6 @@
 #include "tlas.h"
 #include <float.h>
-#include "pool.h"
+#include "buf.h"
 #include "bvhinst.h"
 #include "aabb.h"
 
@@ -12,10 +12,10 @@ void tlas_init(tlas *t, size_t inst_cnt)
   // Here the root node will be added last (at the end of the array) and then
   // moved to the beginning, so it sits at slot 0 finally.
 
-  t->nodes = pool_acquire(TLAS_NODE, 2 * inst_cnt + 1);
+  t->nodes = buf_acquire(TLAS_NODE, 2 * inst_cnt + 1);
   t->node_cnt = 0;
 
-  t->instances = pool_acquire(BVH_INST, inst_cnt);
+  t->instances = buf_acquire(BVH_INST, inst_cnt);
   t->inst_cnt = inst_cnt;
 }
 

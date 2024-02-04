@@ -2,15 +2,15 @@
 #include <stdio.h>
 #include <string.h>
 #include "sutil.h"
-#include "pool.h"
+#include "buf.h"
 #include "tri.h"
 
 void mesh_init(mesh *m, size_t tri_cnt)
 {
   m->tri_cnt = tri_cnt;
 
-  m->tris = pool_acquire(TRI, tri_cnt);
-  m->tris_data = pool_acquire(TRI_DATA, tri_cnt);
+  m->tris = buf_acquire(TRI, tri_cnt);
+  m->tris_data = buf_acquire(TRI_DATA, tri_cnt);
 }
 
 void mesh_load_obj(mesh *m, const char *path, size_t tri_cnt, size_t vertex_cnt, size_t normal_cnt, size_t uv_cnt)

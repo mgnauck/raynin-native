@@ -1,6 +1,6 @@
 #include "bvh.h"
 #include <float.h>
-#include "pool.h"
+#include "buf.h"
 #include "mutil.h"
 #include "tri.h"
 #include "aabb.h"
@@ -159,8 +159,8 @@ void bvh_init(bvh *b, size_t tri_cnt)
 {
   // Would be 2 * tri_cnt - 1 but we skip one node
   b->node_cnt = 0;
-  b->nodes = pool_acquire(BVH_NODE, 2 * tri_cnt);
-  b->indices = pool_acquire(INDEX, tri_cnt);
+  b->nodes = buf_acquire(BVH_NODE, 2 * tri_cnt);
+  b->indices = buf_acquire(INDEX, tri_cnt);
 }
 
 void bvh_build(bvh *b, const tri *tris, size_t tri_cnt)

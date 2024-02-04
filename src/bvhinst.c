@@ -1,5 +1,5 @@
 #include "bvhinst.h"
-#include "pool.h"
+#include "buf.h"
 #include "mesh.h"
 #include "bvh.h"
 #include "aabb.h"
@@ -7,8 +7,8 @@
 void bvh_inst_create(bvh_inst *bi, size_t mesh_idx, size_t inst_idx,
     const mesh *mesh, const bvh *bvh, const mat4 transform)
 {
-  bi->tri_ofs = pool_ofs(TRI, mesh->tris);
-  bi->bvh_node_ofs = pool_ofs(BVH_NODE, bvh->nodes);
+  bi->tri_ofs = buf_idx(TRI, mesh->tris);
+  bi->bvh_node_ofs = buf_idx(BVH_NODE, bvh->nodes);
   bi->id = (mesh_idx << 20) | (inst_idx & 0xfffff);
   
   // Store root node bounds transformed into world space

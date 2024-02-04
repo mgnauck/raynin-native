@@ -3,7 +3,7 @@
 #include <SDL.h>
 #include "sutil.h"
 #include "mutil.h"
-#include "pool.h"
+#include "buf.h"
 #include "vec3.h"
 #include "ray.h"
 #include "tri.h"
@@ -108,14 +108,14 @@ void init(uint32_t width, uint32_t height)
 {
   pcg_srand(42u, 303u);
 
-  pool_init(7);
-  pool_reserve(TRI, sizeof(tri), 19332 + 1024);
-  pool_reserve(TRI_DATA, sizeof(tri_data), 19332 + 1024);
-  pool_reserve(INDEX, sizeof(size_t), 19332 + 1024);
-  pool_reserve(BVH_NODE, sizeof(bvh_node), 2 * (19332 + 1024));
-  pool_reserve(BVH_INST, sizeof(bvh_inst), INST_CNT);
-  pool_reserve(TLAS_NODE, sizeof(tlas_node), 2 * INST_CNT + 1);
-  //pool_reserve(MAT, sizeof(mat), mat_cnt);
+  buf_init(7);
+  buf_reserve(TRI, sizeof(tri), 19332 + 1024);
+  buf_reserve(TRI_DATA, sizeof(tri_data), 19332 + 1024);
+  buf_reserve(INDEX, sizeof(size_t), 19332 + 1024);
+  buf_reserve(BVH_NODE, sizeof(bvh_node), 2 * (19332 + 1024));
+  buf_reserve(BVH_INST, sizeof(bvh_inst), INST_CNT);
+  buf_reserve(TLAS_NODE, sizeof(tlas_node), 2 * INST_CNT + 1);
+  //buf_reserve(MAT, sizeof(mat), mat_cnt);
 
   config = (cfg){ width, height, 5, 5 };
   
@@ -224,7 +224,7 @@ bool update(float time)
 
 void release()
 {
-  pool_release();
+  buf_release();
 }
 
 int main(int argc, char *argv[])
