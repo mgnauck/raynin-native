@@ -2,16 +2,8 @@
 #define BUF_H
 
 #include <stddef.h>
+#include "gutil.h"
 
-typedef enum buf_type {
-  TRI = 0,
-  TRI_DATA,
-  INDEX,
-  BVH_NODE,
-  TLAS_NODE,
-  INST,
-  MAT
-} buf_type;
 
 void    buf_init(size_t buf_cnt);
 void    buf_reserve(buf_type type, size_t buf_type_size, size_t elem_cnt);

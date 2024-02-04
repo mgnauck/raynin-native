@@ -12,8 +12,12 @@
 
 typedef enum buf_type {
   GLOB = 0,
-  BVH,
+  TRI,
+  TRI_DATA,
   INDEX,
+  BVH_NODE,
+  TLAS_NODE,
+  INST,
   MAT
 } buf_type;
 

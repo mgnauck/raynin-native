@@ -103,7 +103,8 @@ void init(uint32_t width, uint32_t height)
 {
   pcg_srand(42u, 303u);
 
-  buf_init(7);
+  buf_init(8);
+  buf_reserve(GLOB, sizeof(char), GLOB_BUF_SIZE);
   buf_reserve(TRI, sizeof(tri), 19332 + 1024);
   buf_reserve(TRI_DATA, sizeof(tri_data), 19332 + 1024);
   buf_reserve(INDEX, sizeof(size_t), 19332 + 1024);
