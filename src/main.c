@@ -21,9 +21,10 @@
 #define MOVE_VEL  0.2f
 #define LOOK_VEL  0.005f
 
+#define TRI_CNT   64
 #define MESH_CNT  2
 #define INST_CNT  128
-#define MAT_CNT   16
+#define MAT_CNT   2
 
 //#define NO_KEY_OR_MOUSE_HANDLING
 
@@ -122,8 +123,22 @@ void init(uint32_t width, uint32_t height)
   
   view_calc(&scn.view, config.width, config.height, &scn.cam);
 
-  mesh_load_obj(&scn.meshes[0], "data/teapot.obj", 1024, 892, 734, 296);
-  mesh_load_obj(&scn.meshes[1], "data/dragon.obj", 19332, 11042, 11042, 11042);
+  //mesh_load_obj(&scn.meshes[0], "data/teapot.obj", 1024, 892, 734, 296);
+  //mesh_load_obj(&scn.meshes[1], "data/dragon.obj", 19332, 11042, 11042, 11042);
+
+  for(size_t j=0; j<MESH_CNT; j++) {
+    mesh_init(&scn.meshes[j], TRI_CNT);
+    for(size_t i=0; i<TRI_CNT; i++) {
+      vec3 a = vec3_sub(vec3_scale(vec3_rand(), 5.0f), (vec3){ 2.5f, 2.5f, 2.5f });
+      scn.meshes[j].tris[i].v[0] = a;
+      scn.meshes[j].tris[i].v[1] = vec3_add(a, vec3_rand());
+      scn.meshes[j].tris[i].v[2] = vec3_add(a, vec3_rand());
+      scn.meshes[j].tris_data[i].n[0] = vec3_rand();
+      scn.meshes[j].tris_data[i].n[1] = vec3_rand();
+      scn.meshes[j].tris_data[i].n[2] = vec3_rand();
+      tri_calc_center(&scn.meshes[j].tris[i]);
+    }
+  }
 
   for(size_t i=0; i<MESH_CNT; i++) {
     bvh_init(&scn.bvhs[i], scn.meshes[i].tri_cnt);
@@ -163,15 +178,16 @@ bool update(float time)
     mat4_mul(transform, transform, rotz);
      
     mat4 scale;
-    mat4_scale(scale, (i % 2 == 1) ? 0.004f : 0.2f);
+    //mat4_scale(scale, (i % 2 == 1) ? 0.004f : 0.2f);
+    mat4_scale(scale, 0.2f); 
     mat4_mul(transform, transform, scale);
     
     mat4 translation;
     mat4_trans(translation, positions[i]);
     mat4_mul(transform, translation, transform);
 
-    inst_create(&scn.instances[i], i % 2, i, &scn.meshes[i % 2], &scn.bvhs[i % 2],
-        transform, LAMBERT, &scn.materials[i % 16]);
+    inst_create(&scn.instances[i], i % MESH_CNT, i, &scn.meshes[i % MESH_CNT], &scn.bvhs[i % MESH_CNT],
+        transform, LAMBERT, &scn.materials[i % MAT_CNT]);
 	
     if(!paused) {
       positions[i] = vec3_add(positions[i], directions[i]);
@@ -211,7 +227,8 @@ bool update(float time)
             vec3 nrm = vec3_add(vec3_add(vec3_scale(data->n[1], h.u), vec3_scale(data->n[2], h.v)), vec3_scale(data->n[0], 1.0f - h.u - h.v));
             nrm = vec3_unit(mat4_mul_dir(inst->transform, nrm));
             nrm = vec3_scale(vec3_add(nrm, (vec3){ 1, 1, 1 }), 0.5f);
-            c = vec3_mul(nrm, scn.materials[scn.instances[inst_idx].mat_id & 0xffffff].color);
+            //c = vec3_mul(nrm, scn.materials[scn.instances[inst_idx].mat_id & 0xffffff].color);
+            c = scn.materials[scn.instances[inst_idx].mat_id & 0xffffff].color;
           }
           set_pix(i + x, j + y, c);
         }

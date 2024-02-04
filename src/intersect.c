@@ -21,7 +21,8 @@ float intersect_aabb(const ray *r, float curr_t, vec3 min_ext, vec3 max_ext)
   return tnear <= tfar && tnear < curr_t && tfar > EPSILON ? tnear : MAX_DISTANCE;
 }
 
-// MT ray-triangle: https://fileadmin.cs.lth.se/cs/Personal/Tomas_Akenine-Moller/raytri/
+// Moeller/Trumbore ray triangle intersection
+// https://fileadmin.cs.lth.se/cs/Personal/Tomas_Akenine-Moller/raytri/
 void intersect_tri(const ray *r, const tri *t, size_t obj, size_t tri, hit *h)
 {
   // Vectors of two edges sharing vertex 0
