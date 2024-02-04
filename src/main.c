@@ -210,7 +210,7 @@ bool update(float time)
             vec3 nrm = vec3_add(vec3_add(vec3_scale(data->n[1], h.u), vec3_scale(data->n[2], h.v)), vec3_scale(data->n[0], 1.0f - h.u - h.v));
             nrm = vec3_unit(mat4_mul_dir(inst->transform, nrm));
             nrm = vec3_scale(vec3_add(nrm, (vec3){ 1, 1, 1 }), 0.5f);
-            c = vec3_mul(nrm, scn.materials[scn.instances[inst_idx].mat_id].color);
+            c = vec3_mul(nrm, scn.materials[scn.instances[inst_idx].mat_id & 0xffffff].color);
           }
           set_pix(i + x, j + y, c);
         }

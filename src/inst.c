@@ -11,8 +11,7 @@ void inst_create(inst *inst, size_t mesh_idx, size_t inst_idx,
   inst->tri_ofs = buf_idx(TRI, mesh->tris);
   inst->bvh_node_ofs = buf_idx(BVH_NODE, bvh->nodes);
   inst->id = (mesh_idx << 20) | (inst_idx & 0xfffff);
-  inst->mat_type = mat_type;
-  inst->mat_id = buf_idx(MAT, mat);
+  inst->mat_id = (mat_type << 24) | (buf_idx(MAT, mat) & 0xffffff);
   
   // Store root node bounds transformed into world space
   aabb a = aabb_init();
