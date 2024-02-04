@@ -1,19 +1,18 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <SDL.h>
-#include "sutil.h"
 #include "mutil.h"
 #include "buf.h"
 #include "vec3.h"
 #include "ray.h"
 #include "tri.h"
 #include "cfg.h"
-#include "view.h"
-#include "cam.h"
 #include "mesh.h"
 #include "bvh.h"
 #include "inst.h"
+#include "mat.h"
 #include "tlas.h"
+#include "scene.h"
 #include "intersect.h"
 
 #define WIDTH     1024
@@ -24,19 +23,15 @@
 
 #define MESH_CNT  2
 #define INST_CNT  128
+#define MAT_CNT   16
 
 //#define NO_KEY_OR_MOUSE_HANDLING
 
-bool          quit = false;
 SDL_Surface   *screen;
+bool          quit = false;
 
 cfg           config;
-view          curr_view;
-cam           curr_cam;
-
-mesh          meshes[MESH_CNT];
-bvh           bvhs[MESH_CNT];
-tlas          scene;
+scene         scn;
 
 vec3          positions[INST_CNT];
 vec3          directions[INST_CNT];
@@ -63,45 +58,45 @@ void handle_keypress(const SDL_Keysym *key)
       paused = !paused;
       break;
     case SDLK_a:
-      curr_cam.eye = vec3_add(curr_cam.eye, vec3_scale(curr_cam.right, -MOVE_VEL));
+      scn.cam.eye = vec3_add(scn.cam.eye, vec3_scale(scn.cam.right, -MOVE_VEL));
       break;
     case SDLK_d:
-      curr_cam.eye = vec3_add(curr_cam.eye, vec3_scale(curr_cam.right, MOVE_VEL));
+      scn.cam.eye = vec3_add(scn.cam.eye, vec3_scale(scn.cam.right, MOVE_VEL));
       break;
     case SDLK_w:
-      curr_cam.eye = vec3_add(curr_cam.eye, vec3_scale(curr_cam.fwd, -MOVE_VEL));
+      scn.cam.eye = vec3_add(scn.cam.eye, vec3_scale(scn.cam.fwd, -MOVE_VEL));
       break;
     case SDLK_s:
-      curr_cam.eye = vec3_add(curr_cam.eye, vec3_scale(curr_cam.fwd, MOVE_VEL));
+      scn.cam.eye = vec3_add(scn.cam.eye, vec3_scale(scn.cam.fwd, MOVE_VEL));
       break;
     case SDLK_i:
-      curr_cam.foc_dist += 0.1f;
+      scn.cam.foc_dist += 0.1f;
       break;
     case SDLK_k:
-      curr_cam.foc_dist = max(curr_cam.foc_dist - 0.1f, 0.1f);
+      scn.cam.foc_dist = max(scn.cam.foc_dist - 0.1f, 0.1f);
       break;
     case SDLK_j:
-      curr_cam.foc_angle = max(curr_cam.foc_angle - 0.1f, 0.1f);
+      scn.cam.foc_angle = max(scn.cam.foc_angle - 0.1f, 0.1f);
       break;
     case SDLK_l:
-      curr_cam.foc_angle += 0.1f;
+      scn.cam.foc_angle += 0.1f;
       break;
     case SDLK_o:
       orbit_cam = !orbit_cam;
       break;
   }
 
-  view_calc(&curr_view, config.width, config.height, &curr_cam);
+  view_calc(&scn.view, config.width, config.height, &scn.cam);
 }
 
 void handle_mouse_motion(const SDL_MouseMotionEvent *event)
 {
-  float theta = min(max(acosf(-curr_cam.fwd.y) + (float)event->yrel * LOOK_VEL, 0.01f), 0.99f * PI);
-  float phi = fmodf(atan2f(-curr_cam.fwd.z, curr_cam.fwd.x) + PI - (float)event->xrel * LOOK_VEL, 2.0f * PI);
+  float theta = min(max(acosf(-scn.cam.fwd.y) + (float)event->yrel * LOOK_VEL, 0.01f), 0.99f * PI);
+  float phi = fmodf(atan2f(-scn.cam.fwd.z, scn.cam.fwd.x) + PI - (float)event->xrel * LOOK_VEL, 2.0f * PI);
   
-  cam_set_dir(&curr_cam, vec3_spherical(theta, phi));
+  cam_set_dir(&scn.cam, vec3_spherical(theta, phi));
   
-  view_calc(&curr_view, config.width, config.height, &curr_cam);
+  view_calc(&scn.view, config.width, config.height, &scn.cam);
 }
 
 void init(uint32_t width, uint32_t height)
@@ -115,30 +110,33 @@ void init(uint32_t width, uint32_t height)
   buf_reserve(BVH_NODE, sizeof(bvh_node), 2 * (19332 + 1024));
   buf_reserve(TLAS_NODE, sizeof(tlas_node), 2 * INST_CNT + 1);
   buf_reserve(INST, sizeof(inst), INST_CNT);
-  //buf_reserve(MAT, sizeof(mat), mat_cnt);
+  buf_reserve(MAT, sizeof(mat), MAT_CNT);
 
   config = (cfg){ width, height, 5, 5 };
   
-  curr_cam = (cam){ .vert_fov = 60.0f, .foc_dist = 3.0f, .foc_angle = 0.0f };
-  cam_set(&curr_cam, (vec3){ 0.0f, 0.0f, -6.5f }, (vec3){ 0.0f, 0.0f, 2.0f });
+  scene_init(&scn, MESH_CNT, INST_CNT, MAT_CNT);
   
-  view_calc(&curr_view, config.width, config.height, &curr_cam);
+  scn.cam = (cam){ .vert_fov = 60.0f, .foc_dist = 3.0f, .foc_angle = 0.0f };
+  cam_set(&scn.cam, (vec3){ 0.0f, 0.0f, -6.5f }, (vec3){ 0.0f, 0.0f, 2.0f });
   
-  mesh_load_obj(&meshes[0], "data/teapot.obj", 1024, 892, 734, 296);
-  mesh_load_obj(&meshes[1], "data/dragon.obj", 19332, 11042, 11042, 11042);
+  view_calc(&scn.view, config.width, config.height, &scn.cam);
+
+  mesh_load_obj(&scn.meshes[0], "data/teapot.obj", 1024, 892, 734, 296);
+  mesh_load_obj(&scn.meshes[1], "data/dragon.obj", 19332, 11042, 11042, 11042);
 
   for(size_t i=0; i<MESH_CNT; i++) {
-    bvh_init(&bvhs[i], meshes[i].tri_cnt);
-    bvh_build(&bvhs[i], meshes[i].tris, meshes[i].tri_cnt);
+    bvh_init(&scn.bvhs[i], scn.meshes[i].tri_cnt);
+    bvh_build(&scn.bvhs[i], scn.meshes[i].tris, scn.meshes[i].tri_cnt);
   }
-
-  tlas_init(&scene, INST_CNT);
 
   for(size_t i=0; i<INST_CNT; i++) {
 	  positions[i] = vec3_scale(vec3_sub(vec3_rand(), (vec3){ 0.5f, 0.5f, 0.5f }), 4.0f);
 	  directions[i] = vec3_scale(vec3_unit(positions[i]), 0.05f);
 	  orientations[i] = vec3_scale(vec3_rand(), 2.5f);
   }
+
+  for(size_t i=0; i<MAT_CNT; i++)
+    mat_rand(&scn.materials[i]);
 }
 
 bool update(float time)
@@ -148,8 +146,8 @@ bool update(float time)
     float r = 8.0f;
     float h = 0.0f;
     vec3 pos = (vec3){ r * sinf(time * s), h * sinf(time * s * 0.7f), r * cosf(time * s) };
-    cam_set(&curr_cam, pos, vec3_neg(pos));
-    view_calc(&curr_view, config.width, config.height, &curr_cam);
+    cam_set(&scn.cam, pos, vec3_neg(pos));
+    view_calc(&scn.view, config.width, config.height, &scn.cam);
   }
 
   uint64_t start = SDL_GetTicks64();
@@ -171,7 +169,8 @@ bool update(float time)
     mat4_trans(translation, positions[i]);
     mat4_mul(transform, translation, transform);
 
-    inst_create(&scene.instances[i], i % 2, i, &meshes[i % 2], &bvhs[i % 2], transform);
+    inst_create(&scn.instances[i], i % 2, i, &scn.meshes[i % 2], &scn.bvhs[i % 2],
+        transform, LAMBERT, &scn.materials[i % 16]);
 	
     if(!paused) {
       positions[i] = vec3_add(positions[i], directions[i]);
@@ -188,7 +187,7 @@ bool update(float time)
   SDL_Log("[UPDATE] %lu ms", SDL_GetTicks64() - start);
   
   start = SDL_GetTicks64();
-  tlas_build(&scene);
+  tlas_build(scn.tlas_nodes, scn.instances, INST_CNT);
   SDL_Log("[TLAS] %lu ms", SDL_GetTicks64() - start);
 
   start = SDL_GetTicks64();
@@ -198,19 +197,20 @@ bool update(float time)
       for(size_t y=0; y<BLOCK_SIZE; y++) {
         for(size_t x=0; x<BLOCK_SIZE; x++) {
           ray r;
-          ray_create_primary(&r, (float)(i + x), (float)(j + y), &curr_view, &curr_cam);
+          ray_create_primary(&r, (float)(i + x), (float)(j + y), &scn.view, &scn.cam);
           hit h = (hit){ .t = MAX_DISTANCE };
-          intersect_tlas(&r, scene.nodes, scene.instances, &h);
+          intersect_tlas(&r, scn.tlas_nodes, scn.instances, &h);
           vec3 c = { 0, 0, 0 };
           if(h.t < MAX_DISTANCE) {
             size_t mesh_idx = h.obj >> 20;
             size_t inst_idx = h.obj & 0xfffff;
             size_t tri_idx = h.tri;
-            tri_data* data = &meshes[mesh_idx].tris_data[tri_idx];
-            inst *inst = &scene.instances[inst_idx];
+            tri_data* data = &scn.meshes[mesh_idx].tris_data[tri_idx];
+            inst *inst = &scn.instances[inst_idx];
             vec3 nrm = vec3_add(vec3_add(vec3_scale(data->n[1], h.u), vec3_scale(data->n[2], h.v)), vec3_scale(data->n[0], 1.0f - h.u - h.v));
             nrm = vec3_unit(mat4_mul_dir(inst->transform, nrm));
-            c = vec3_scale(vec3_add(nrm, (vec3){ 1, 1, 1 }), 0.5f);
+            nrm = vec3_scale(vec3_add(nrm, (vec3){ 1, 1, 1 }), 0.5f);
+            c = vec3_mul(nrm, scn.materials[scn.instances[inst_idx].mat_id].color);
           }
           set_pix(i + x, j + y, c);
         }
@@ -224,6 +224,7 @@ bool update(float time)
 
 void release()
 {
+  scene_release(&scn);
   buf_release();
 }
 

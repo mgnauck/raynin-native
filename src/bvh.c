@@ -18,6 +18,14 @@ typedef struct split {
   uint8_t axis;
 } split;
 
+void bvh_init(bvh *b, size_t tri_cnt)
+{
+  // Would be 2 * tri_cnt - 1 but we skip one node
+  b->node_cnt = 0;
+  b->nodes = buf_acquire(BVH_NODE, 2 * tri_cnt);
+  b->indices = buf_acquire(INDEX, tri_cnt);
+}
+
 // Guenther et al: Realtime Ray Tracing on GPU with BVH-based Packet Traversal
 // Section Fast BVH Construction
 split find_best_cost_interval_split(const bvh *b, bvh_node *n, const tri *tris)
@@ -153,14 +161,6 @@ void subdivide_node(bvh *b, bvh_node *n, const tri *tris)
 
   subdivide_node(b, left_child, tris);
   subdivide_node(b, right_child, tris);
-}
-
-void bvh_init(bvh *b, size_t tri_cnt)
-{
-  // Would be 2 * tri_cnt - 1 but we skip one node
-  b->node_cnt = 0;
-  b->nodes = buf_acquire(BVH_NODE, 2 * tri_cnt);
-  b->indices = buf_acquire(INDEX, tri_cnt);
 }
 
 void bvh_build(bvh *b, const tri *tris, size_t tri_cnt)

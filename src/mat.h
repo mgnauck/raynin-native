@@ -16,4 +16,6 @@ typedef struct mat {
   float value;
 } mat;
 
+void mat_rand(mat *m);
+
 #endif

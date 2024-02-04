@@ -38,7 +38,7 @@ void *buf_ptr(buf_type type, size_t idx)
   return buf[type].ptr + idx * buf[type].tsz;
 }
 
-size_t buf_idx(buf_type type, void *ptr)
+size_t buf_idx(buf_type type, const void *ptr)
 {
   return ((char *)ptr - buf[type].ptr) / buf[type].tsz;
 }

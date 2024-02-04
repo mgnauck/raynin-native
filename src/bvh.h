@@ -3,7 +3,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-
 #include "vec3.h"
 
 typedef struct tri tri;

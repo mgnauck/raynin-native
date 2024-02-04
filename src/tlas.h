@@ -13,14 +13,7 @@ typedef struct tlas_node {
   size_t    inst;     // Leaf nodes only
 } tlas_node;
 
-typedef struct tlas {
-  size_t    node_cnt;
-  tlas_node *nodes;
-  size_t    inst_cnt;
-  inst      *instances;
-} tlas;
-
-void tlas_init(tlas *t, size_t inst_cnt);
-void tlas_build(tlas *t);
+void tlas_init(tlas_node **nodes, inst **instances, size_t inst_cnt);
+void tlas_build(tlas_node *nodes, const inst *instances, size_t inst_cnt);
 
 #endif

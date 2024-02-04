@@ -1,23 +1,8 @@
 #include "tlas.h"
 #include <float.h>
 #include "buf.h"
-#include "inst.h"
 #include "aabb.h"
-
-void tlas_init(tlas *t, size_t inst_cnt)
-{
-  // We actually only need 2 * inst_cnt - 1 nodes. But we do allocate space
-  // for 2 more: We will leave node 1 empty for mem aligment purposes.
-  // Additionally we need another node slot during agglomerative clustering.
-  // Here the root node will be added last (at the end of the array) and then
-  // moved to the beginning, so it sits at slot 0 finally.
-
-  t->nodes = buf_acquire(TLAS_NODE, 2 * inst_cnt + 1);
-  t->node_cnt = 0;
-
-  t->instances = buf_acquire(INST, inst_cnt);
-  t->inst_cnt = inst_cnt;
-}
+#include "inst.h"
 
 size_t find_best_node(tlas_node *nodes, size_t idx, size_t *node_indices,
     size_t node_indices_cnt)
@@ -47,55 +32,54 @@ size_t find_best_node(tlas_node *nodes, size_t idx, size_t *node_indices,
 }
 
 // Walter et al: Fast Agglomerative Clustering for Rendering
-void tlas_build(tlas *t)
+void tlas_build(tlas_node *nodes, const inst *instances, size_t inst_cnt)
 {
-  size_t node_indices_cnt = t->inst_cnt;
-  size_t node_indices[t->inst_cnt];
+  size_t node_indices_cnt = inst_cnt;
+  size_t node_indices[inst_cnt];
 
   // Reserve space for root node + skipped 1st node
   size_t ofs = 2;
 
   // Construct leaf node for each instance
-  for(size_t i=0; i<t->inst_cnt; i++) {
-    tlas_node *n = &t->nodes[ofs + i];
-    inst *inst = &t->instances[i];
-    n->min = inst->min;
-    n->max = inst->max;
+  for(size_t i=0; i<inst_cnt; i++) {
+    tlas_node *n = &nodes[ofs + i];
+    n->min = instances[i].min;
+    n->max = instances[i].max;
     n->children = 0;
     n->inst = i;
     node_indices[i] = ofs + i;
   }
 
   // Account for nodes so far
-  t->node_cnt = ofs + t->inst_cnt;
+  size_t node_cnt = ofs + inst_cnt;
 
   // Bottom up combining of tlas nodes
   size_t a = 0;
-  size_t b = find_best_node(t->nodes, a, node_indices, node_indices_cnt);
+  size_t b = find_best_node(nodes, a, node_indices, node_indices_cnt);
   while(node_indices_cnt > 1) {
-    size_t c = find_best_node(t->nodes, b, node_indices, node_indices_cnt);
+    size_t c = find_best_node(nodes, b, node_indices, node_indices_cnt);
     if(a == c) {
       size_t idx_a = node_indices[a];
       size_t idx_b = node_indices[b];
 
-      tlas_node *node_a = &t->nodes[idx_a];
-      tlas_node *node_b = &t->nodes[idx_b];
+      tlas_node *node_a = &nodes[idx_a];
+      tlas_node *node_b = &nodes[idx_b];
 
       // Claim new node which is the combination of node A and B
-      tlas_node *new_node = &t->nodes[t->node_cnt];
+      tlas_node *new_node = &nodes[node_cnt];
       new_node->min = vec3_min(node_a->min, node_b->min);
       new_node->max = vec3_max(node_a->max, node_b->max);
       // Each child node index gets 16 bits
       new_node->children = idx_b << 16 | idx_a;
 
       // Replace node A with newly created combined node
-      node_indices[a] = t->node_cnt++;
+      node_indices[a] = node_cnt++;
 
       // Remove node B by replacing its slot with last node
       node_indices[b] = node_indices[--node_indices_cnt];
 
       // Restart the loop for remaining nodes
-      b = find_best_node(t->nodes, a, node_indices, node_indices_cnt);
+      b = find_best_node(nodes, a, node_indices, node_indices_cnt);
     } else {
       // The best match B we found for A had itself a better match in C, thus
       // A and B are not best matches and we continue searching with B and C.
@@ -105,5 +89,5 @@ void tlas_build(tlas *t)
   }
 
   // Root node was formed last (at 2*n+1), move it to reserved index 0
-  t->nodes[0] = t->nodes[--t->node_cnt];
+  nodes[0] = nodes[--node_cnt];
 }
