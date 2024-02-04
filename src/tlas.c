@@ -1,7 +1,7 @@
 #include "tlas.h"
 #include <float.h>
 #include "buf.h"
-#include "bvhinst.h"
+#include "inst.h"
 #include "aabb.h"
 
 void tlas_init(tlas *t, size_t inst_cnt)
@@ -15,7 +15,7 @@ void tlas_init(tlas *t, size_t inst_cnt)
   t->nodes = buf_acquire(TLAS_NODE, 2 * inst_cnt + 1);
   t->node_cnt = 0;
 
-  t->instances = buf_acquire(BVH_INST, inst_cnt);
+  t->instances = buf_acquire(INST, inst_cnt);
   t->inst_cnt = inst_cnt;
 }
 
@@ -55,14 +55,14 @@ void tlas_build(tlas *t)
   // Reserve space for root node + skipped 1st node
   size_t ofs = 2;
 
-  // Construct leaf node for each bvh instance
+  // Construct leaf node for each instance
   for(size_t i=0; i<t->inst_cnt; i++) {
     tlas_node *n = &t->nodes[ofs + i];
-    bvh_inst *bi = &t->instances[i];
-    n->min = bi->min;
-    n->max = bi->max;
+    inst *inst = &t->instances[i];
+    n->min = inst->min;
+    n->max = inst->max;
     n->children = 0;
-    n->bvh_inst = i;
+    n->inst = i;
     node_indices[i] = ofs + i;
   }
 

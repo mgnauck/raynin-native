@@ -5,7 +5,7 @@
 #include "tri.h"
 #include "mesh.h"
 #include "bvh.h"
-#include "bvhinst.h"
+#include "inst.h"
 #include "tlas.h"
 
 // GPU efficient slabs test [Laine et al. 2013; Afra et al. 2016]
@@ -115,16 +115,16 @@ void intersect_bvh(const ray *r, const bvh_node *nodes, const size_t *indices, c
   }
 }
 
-void intersect_bvh_inst(const ray *r, const bvh_inst *bi, hit *h)
+void intersect_inst(const ray *r, const inst *inst, hit *h)
 {
   ray r_obj;
-  ray_transform(&r_obj, bi->inv_transform, r);
+  ray_transform(&r_obj, inst->inv_transform, r);
 
-  intersect_bvh(&r_obj, buf_ptr(BVH_NODE, bi->bvh_node_ofs),
-      buf_ptr(INDEX, bi->tri_ofs), buf_ptr(TRI, bi->tri_ofs), bi->id, h);
+  intersect_bvh(&r_obj, buf_ptr(BVH_NODE, inst->bvh_node_ofs),
+      buf_ptr(INDEX, inst->tri_ofs), buf_ptr(TRI, inst->tri_ofs), inst->id, h);
 }
 
-void intersect_tlas(const ray *r, const tlas_node *nodes, const bvh_inst *instances, hit *h)
+void intersect_tlas(const ray *r, const tlas_node *nodes, const inst *instances, hit *h)
 {
 #define NODE_STACK_SIZE 64
   uint32_t        stack_pos = 0;
@@ -133,8 +133,8 @@ void intersect_tlas(const ray *r, const tlas_node *nodes, const bvh_inst *instan
 
   while(true) {
     if(node->children == 0) {
-      // Leaf node with a single bvh instance assigned
-      intersect_bvh_inst(r, &instances[node->bvh_inst], h);
+      // Leaf node with a single instance assigned
+      intersect_inst(r, &instances[node->inst], h);
       if(stack_pos > 0)
         node = node_stack[--stack_pos];
       else

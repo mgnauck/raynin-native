@@ -4,20 +4,20 @@
 #include <stddef.h>
 #include "vec3.h"
 
-typedef struct bvh_inst bvh_inst;
+typedef struct inst inst;
 
 typedef struct tlas_node {
   vec3      min;
   size_t    children; // 2x 16 bit
   vec3      max;
-  size_t    bvh_inst; // Leaf nodes only
+  size_t    inst;     // Leaf nodes only
 } tlas_node;
 
 typedef struct tlas {
   size_t    node_cnt;
   tlas_node *nodes;
   size_t    inst_cnt;
-  bvh_inst  *instances;
+  inst      *instances;
 } tlas;
 
 void tlas_init(tlas *t, size_t inst_cnt);

@@ -12,7 +12,7 @@
 #include "cam.h"
 #include "mesh.h"
 #include "bvh.h"
-#include "bvhinst.h"
+#include "inst.h"
 #include "tlas.h"
 #include "intersect.h"
 
@@ -113,8 +113,8 @@ void init(uint32_t width, uint32_t height)
   buf_reserve(TRI_DATA, sizeof(tri_data), 19332 + 1024);
   buf_reserve(INDEX, sizeof(size_t), 19332 + 1024);
   buf_reserve(BVH_NODE, sizeof(bvh_node), 2 * (19332 + 1024));
-  buf_reserve(BVH_INST, sizeof(bvh_inst), INST_CNT);
   buf_reserve(TLAS_NODE, sizeof(tlas_node), 2 * INST_CNT + 1);
+  buf_reserve(INST, sizeof(inst), INST_CNT);
   //buf_reserve(MAT, sizeof(mat), mat_cnt);
 
   config = (cfg){ width, height, 5, 5 };
@@ -171,7 +171,7 @@ bool update(float time)
     mat4_trans(translation, positions[i]);
     mat4_mul(transform, translation, transform);
 
-    bvh_inst_create(&scene.instances[i], i % 2, i, &meshes[i % 2], &bvhs[i % 2], transform);
+    inst_create(&scene.instances[i], i % 2, i, &meshes[i % 2], &bvhs[i % 2], transform);
 	
     if(!paused) {
       positions[i] = vec3_add(positions[i], directions[i]);
@@ -207,7 +207,7 @@ bool update(float time)
             size_t inst_idx = h.obj & 0xfffff;
             size_t tri_idx = h.tri;
             tri_data* data = &meshes[mesh_idx].tris_data[tri_idx];
-            bvh_inst *inst = &scene.instances[inst_idx];
+            inst *inst = &scene.instances[inst_idx];
             vec3 nrm = vec3_add(vec3_add(vec3_scale(data->n[1], h.u), vec3_scale(data->n[2], h.v)), vec3_scale(data->n[0], 1.0f - h.u - h.v));
             nrm = vec3_unit(mat4_mul_dir(inst->transform, nrm));
             c = vec3_scale(vec3_add(nrm, (vec3){ 1, 1, 1 }), 0.5f);

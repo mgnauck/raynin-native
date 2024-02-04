@@ -8,8 +8,8 @@ typedef enum buf_type {
   TRI_DATA,
   INDEX,
   BVH_NODE,
-  BVH_INST,
   TLAS_NODE,
+  INST,
   MAT
 } buf_type;
 
