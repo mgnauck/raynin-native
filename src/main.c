@@ -21,10 +21,10 @@
 #define MOVE_VEL  0.2f
 #define LOOK_VEL  0.005f
 
-#define TRI_CNT   64
+#define TRI_CNT   128
 #define MESH_CNT  6
-#define INST_CNT  32
-#define MAT_CNT   32
+#define INST_CNT  8
+#define MAT_CNT   8
 
 //#define NO_KEY_OR_MOUSE_HANDLING
 
@@ -186,8 +186,9 @@ bool update(float time)
     mat4_trans(translation, positions[i]);
     mat4_mul(transform, translation, transform);
 
-    inst_create(&scn.instances[i], i % MESH_CNT, i, &scn.meshes[i % MESH_CNT], &scn.bvhs[i % MESH_CNT],
-        transform, LAMBERT, &scn.materials[i % MAT_CNT]);
+    inst_create(&scn.instances[i], i, transform,
+        &scn.meshes[i % MESH_CNT], &scn.bvhs[i % MESH_CNT],
+        LAMBERT, &scn.materials[i % MAT_CNT]);
 	
     if(!paused) {
       positions[i] = vec3_add(positions[i], directions[i]);
@@ -219,16 +220,14 @@ bool update(float time)
           intersect_tlas(&r, scn.tlas_nodes, scn.instances, &h);
           vec3 c = { 0, 0, 0 };
           if(h.t < MAX_DISTANCE) {
-            size_t mesh_idx = h.obj >> 20;
-            size_t inst_idx = h.obj & 0xfffff;
-            size_t tri_idx = h.tri;
-            tri_data* data = &scn.meshes[mesh_idx].tris_data[tri_idx];
-            inst *inst = &scn.instances[inst_idx];
+            inst *inst = &scn.instances[h.id & 0xffff];
+            size_t tri_idx = h.id >> 16;
+            tri_data* data = buf_ptr(TRI_DATA, inst->ofs + tri_idx);
             vec3 nrm = vec3_add(vec3_add(vec3_scale(data->n[1], h.u), vec3_scale(data->n[2], h.v)), vec3_scale(data->n[0], 1.0f - h.u - h.v));
             nrm = vec3_unit(mat4_mul_dir(inst->transform, nrm));
             nrm = vec3_scale(vec3_add(nrm, (vec3){ 1, 1, 1 }), 0.5f);
-            c = vec3_mul(nrm, scn.materials[scn.instances[inst_idx].mat_id & 0xffffff].color);
-            //c = scn.materials[scn.instances[inst_idx].mat_id & 0xffffff].color;
+            c = vec3_mul(nrm, scn.materials[(inst->id >> 16) & 0xfff].color);
+            //c = scn.materials[(inst->id >> 16) & 0xfff].color;
           }
           set_pix(i + x, j + y, c);
         }
