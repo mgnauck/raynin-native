@@ -22,9 +22,9 @@
 #define LOOK_VEL  0.005f
 
 #define TRI_CNT   64
-#define MESH_CNT  2
-#define INST_CNT  128
-#define MAT_CNT   2
+#define MESH_CNT  6
+#define INST_CNT  32
+#define MAT_CNT   32
 
 //#define NO_KEY_OR_MOUSE_HANDLING
 
@@ -102,14 +102,14 @@ void handle_mouse_motion(const SDL_MouseMotionEvent *event)
 
 void init(uint32_t width, uint32_t height)
 {
-  pcg_srand(42u, 303u);
+  pcg_srand(31u, 303u);
 
   buf_init(8);
   buf_reserve(GLOB, sizeof(char), GLOB_BUF_SIZE);
-  buf_reserve(TRI, sizeof(tri), 19332 + 1024);
-  buf_reserve(TRI_DATA, sizeof(tri_data), 19332 + 1024);
-  buf_reserve(INDEX, sizeof(size_t), 19332 + 1024);
-  buf_reserve(BVH_NODE, sizeof(bvh_node), 2 * (19332 + 1024));
+  buf_reserve(TRI, sizeof(tri), TRI_CNT * MESH_CNT);
+  buf_reserve(TRI_DATA, sizeof(tri_data), TRI_CNT * MESH_CNT);
+  buf_reserve(INDEX, sizeof(size_t), TRI_CNT * MESH_CNT);
+  buf_reserve(BVH_NODE, sizeof(bvh_node), 2 * (TRI_CNT * MESH_CNT));
   buf_reserve(TLAS_NODE, sizeof(tlas_node), 2 * INST_CNT + 1);
   buf_reserve(INST, sizeof(inst), INST_CNT);
   buf_reserve(MAT, sizeof(mat), MAT_CNT);
@@ -123,11 +123,13 @@ void init(uint32_t width, uint32_t height)
   
   view_calc(&scn.view, config.width, config.height, &scn.cam);
 
+  // TRI CNT: 19332 + 1024
   //mesh_load_obj(&scn.meshes[0], "data/teapot.obj", 1024, 892, 734, 296);
   //mesh_load_obj(&scn.meshes[1], "data/dragon.obj", 19332, 11042, 11042, 11042);
 
   for(size_t j=0; j<MESH_CNT; j++) {
     mesh_init(&scn.meshes[j], TRI_CNT);
+    
     for(size_t i=0; i<TRI_CNT; i++) {
       vec3 a = vec3_sub(vec3_scale(vec3_rand(), 5.0f), (vec3){ 2.5f, 2.5f, 2.5f });
       scn.meshes[j].tris[i].v[0] = a;
@@ -138,11 +140,9 @@ void init(uint32_t width, uint32_t height)
       scn.meshes[j].tris_data[i].n[2] = vec3_rand();
       tri_calc_center(&scn.meshes[j].tris[i]);
     }
-  }
 
-  for(size_t i=0; i<MESH_CNT; i++) {
-    bvh_init(&scn.bvhs[i], scn.meshes[i].tri_cnt);
-    bvh_build(&scn.bvhs[i], scn.meshes[i].tris, scn.meshes[i].tri_cnt);
+    bvh_init(&scn.bvhs[j], scn.meshes[j].tri_cnt);
+    bvh_build(&scn.bvhs[j], scn.meshes[j].tris, scn.meshes[j].tri_cnt);
   }
 
   for(size_t i=0; i<INST_CNT; i++) {
@@ -227,8 +227,8 @@ bool update(float time)
             vec3 nrm = vec3_add(vec3_add(vec3_scale(data->n[1], h.u), vec3_scale(data->n[2], h.v)), vec3_scale(data->n[0], 1.0f - h.u - h.v));
             nrm = vec3_unit(mat4_mul_dir(inst->transform, nrm));
             nrm = vec3_scale(vec3_add(nrm, (vec3){ 1, 1, 1 }), 0.5f);
-            //c = vec3_mul(nrm, scn.materials[scn.instances[inst_idx].mat_id & 0xffffff].color);
-            c = scn.materials[scn.instances[inst_idx].mat_id & 0xffffff].color;
+            c = vec3_mul(nrm, scn.materials[scn.instances[inst_idx].mat_id & 0xffffff].color);
+            //c = scn.materials[scn.instances[inst_idx].mat_id & 0xffffff].color;
           }
           set_pix(i + x, j + y, c);
         }
