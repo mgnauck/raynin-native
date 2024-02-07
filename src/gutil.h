@@ -1,7 +1,7 @@
 #ifndef GUTIL_H
 #define GUTIL_H
 
-#include <stddef.h>
+#include <stdint.h>
 
 #define GLOB_BUF_OFS_CFG    0
 #define GLOB_BUF_OFS_FRAME  16
@@ -21,10 +21,10 @@ typedef enum buf_type {
   MAT
 } buf_type;
 
-extern void gpu_create_res(size_t glob_sz, size_t bvh_sz, size_t indices_sz,
-    size_t obj_sz, size_t shape_sz, size_t mat_sz);
+extern void gpu_create_res(uint32_t glob_sz, uint32_t bvh_sz, uint32_t indices_sz,
+    uint32_t obj_sz, uint32_t shape_sz, uint32_t mat_sz);
 
-extern void gpu_write_buf(buf_type src_type, size_t dest_ofs,
-    const void *src, size_t size);
+extern void gpu_write_buf(buf_type src_type, uint32_t dest_ofs,
+    const void *src, uint32_t size);
 
 #endif

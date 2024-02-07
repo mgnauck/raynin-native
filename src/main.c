@@ -1,5 +1,5 @@
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <SDL.h>
 #include "mutil.h"
 #include "buf.h"
@@ -108,7 +108,7 @@ void init(uint32_t width, uint32_t height)
   buf_reserve(GLOB, sizeof(char), GLOB_BUF_SIZE);
   buf_reserve(TRI, sizeof(tri), TRI_CNT * MESH_CNT);
   buf_reserve(TRI_DATA, sizeof(tri_data), TRI_CNT * MESH_CNT);
-  buf_reserve(INDEX, sizeof(size_t), TRI_CNT * MESH_CNT);
+  buf_reserve(INDEX, sizeof(uint32_t), TRI_CNT * MESH_CNT);
   buf_reserve(BVH_NODE, sizeof(bvh_node), 2 * (TRI_CNT * MESH_CNT));
   buf_reserve(TLAS_NODE, sizeof(tlas_node), 2 * INST_CNT + 1);
   buf_reserve(INST, sizeof(inst), INST_CNT);
@@ -127,10 +127,10 @@ void init(uint32_t width, uint32_t height)
   //mesh_load_obj(&scn.meshes[0], "data/teapot.obj", 1024, 892, 734, 296);
   //mesh_load_obj(&scn.meshes[1], "data/dragon.obj", 19332, 11042, 11042, 11042);
 
-  for(size_t j=0; j<MESH_CNT; j++) {
+  for(uint32_t j=0; j<MESH_CNT; j++) {
     mesh_init(&scn.meshes[j], TRI_CNT);
     
-    for(size_t i=0; i<TRI_CNT; i++) {
+    for(uint32_t i=0; i<TRI_CNT; i++) {
       vec3 a = vec3_sub(vec3_scale(vec3_rand(), 5.0f), (vec3){ 2.5f, 2.5f, 2.5f });
       scn.meshes[j].tris[i].v0 = a;
       scn.meshes[j].tris[i].v1 = vec3_add(a, vec3_rand());
@@ -145,13 +145,13 @@ void init(uint32_t width, uint32_t height)
     bvh_build(&scn.bvhs[j], scn.meshes[j].tris, scn.meshes[j].tri_cnt);
   }
 
-  for(size_t i=0; i<INST_CNT; i++) {
+  for(uint32_t i=0; i<INST_CNT; i++) {
 	  positions[i] = vec3_scale(vec3_sub(vec3_rand(), (vec3){ 0.5f, 0.5f, 0.5f }), 4.0f);
 	  directions[i] = vec3_scale(vec3_unit(positions[i]), 0.05f);
 	  orientations[i] = vec3_scale(vec3_rand(), 2.5f);
   }
 
-  for(size_t i=0; i<MAT_CNT; i++)
+  for(uint32_t i=0; i<MAT_CNT; i++)
     mat_rand(&scn.materials[i]);
 }
 
@@ -167,7 +167,7 @@ bool update(float time)
   }
 
   uint64_t start = SDL_GetTicks64();
-  for(size_t i=0; i<INST_CNT; i++) {
+  for(uint32_t i=0; i<INST_CNT; i++) {
     mat4 transform;
 		
     mat4 rotx, roty, rotz;
@@ -210,10 +210,10 @@ bool update(float time)
 
   start = SDL_GetTicks64();
 #define BLOCK_SIZE 4
-  for(size_t j=0; j<HEIGHT; j+=BLOCK_SIZE) {
-    for(size_t i=0; i<WIDTH; i+=BLOCK_SIZE) {
-      for(size_t y=0; y<BLOCK_SIZE; y++) {
-        for(size_t x=0; x<BLOCK_SIZE; x++) {
+  for(uint32_t j=0; j<HEIGHT; j+=BLOCK_SIZE) {
+    for(uint32_t i=0; i<WIDTH; i+=BLOCK_SIZE) {
+      for(uint32_t y=0; y<BLOCK_SIZE; y++) {
+        for(uint32_t x=0; x<BLOCK_SIZE; x++) {
           ray r;
           ray_create_primary(&r, (float)(i + x), (float)(j + y), &scn.view, &scn.cam);
           hit h = (hit){ .t = MAX_DISTANCE };
@@ -221,7 +221,7 @@ bool update(float time)
           vec3 c = { 0, 0, 0 };
           if(h.t < MAX_DISTANCE) {
             inst *inst = &scn.instances[h.id & 0xffff];
-            size_t tri_idx = h.id >> 16;
+            uint32_t tri_idx = h.id >> 16;
             tri_data* data = buf_ptr(TRI_DATA, inst->ofs + tri_idx);
             vec3 nrm = vec3_add(vec3_add(vec3_scale(data->n1, h.u), vec3_scale(data->n2, h.v)), vec3_scale(data->n0, 1.0f - h.u - h.v));
             nrm = vec3_unit(mat4_mul_dir(inst->transform, nrm));

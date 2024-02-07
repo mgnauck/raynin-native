@@ -5,7 +5,7 @@
 #include "buf.h"
 #include "tri.h"
 
-void mesh_init(mesh *m, size_t tri_cnt)
+void mesh_init(mesh *m, uint32_t tri_cnt)
 {
   m->tri_cnt = tri_cnt;
 
@@ -13,7 +13,7 @@ void mesh_init(mesh *m, size_t tri_cnt)
   m->tris_data = buf_acquire(TRI_DATA, tri_cnt);
 }
 
-void mesh_load_obj(mesh *m, const char *path, size_t tri_cnt, size_t vertex_cnt, size_t normal_cnt, size_t uv_cnt)
+void mesh_load_obj(mesh *m, const char *path, uint32_t tri_cnt, uint32_t vertex_cnt, uint32_t normal_cnt, uint32_t uv_cnt)
 {
   mesh_init(m, tri_cnt);
 
@@ -26,7 +26,7 @@ void mesh_load_obj(mesh *m, const char *path, size_t tri_cnt, size_t vertex_cnt,
   float *uvs = malloc(uv_cnt * 2 * sizeof(float));
   float *puvs = uvs;
 
-  size_t cnt = 0;
+  uint32_t cnt = 0;
 
   FILE *f = fopen(path, "r");
   if(!f)
