@@ -53,21 +53,21 @@ void mesh_load_obj(mesh *m, const char *path, size_t tri_cnt, size_t vertex_cnt,
 			sscanf(line + 2, "%i/%i/%i %i/%i/%i %i/%i/%i", &a, &b, &c, &d, &e, &f, &g, &h, &i);
 
       tri *tri = &m->tris[cnt];
-      tri->v[0] = (vec3){ vertices[(a - 1) * 3], vertices[(a - 1) * 3 + 1], vertices[(a - 1) * 3 + 2] };
-      tri->v[1] = (vec3){ vertices[(d - 1) * 3], vertices[(d - 1) * 3 + 1], vertices[(d - 1) * 3 + 2] };
-      tri->v[2] = (vec3){ vertices[(g - 1) * 3], vertices[(g - 1) * 3 + 1], vertices[(g - 1) * 3 + 2] };
+      tri->v0 = (vec3){ vertices[(a - 1) * 3], vertices[(a - 1) * 3 + 1], vertices[(a - 1) * 3 + 2] };
+      tri->v1 = (vec3){ vertices[(d - 1) * 3], vertices[(d - 1) * 3 + 1], vertices[(d - 1) * 3 + 2] };
+      tri->v2 = (vec3){ vertices[(g - 1) * 3], vertices[(g - 1) * 3 + 1], vertices[(g - 1) * 3 + 2] };
       tri_calc_center(tri);
 
       tri_data *tri_data = &m->tris_data[cnt++];
-      tri_data->n[0] = (vec3){ normals[(c - 1) * 3], normals[(c - 1) * 3 + 1], normals[(c - 1) * 3 + 2] };
-      tri_data->n[1] = (vec3){ normals[(f - 1) * 3], normals[(f - 1) * 3 + 1], normals[(f - 1) * 3 + 2] };
-      tri_data->n[2] = (vec3){ normals[(i - 1) * 3], normals[(i - 1) * 3 + 1], normals[(i - 1) * 3 + 2] };
-      tri_data->u[0] = uvs[(b - 1) * 2];
-      tri_data->v[0] = uvs[(b - 1) * 2 + 1];
-      tri_data->u[1] = uvs[(e - 1) * 2];
-      tri_data->v[1] = uvs[(e - 1) * 2 + 1];
-      tri_data->u[2] = uvs[(h - 1) * 2];
-      tri_data->v[2] = uvs[(h - 1) * 2 + 1]; 
+      tri_data->n0 = (vec3){ normals[(c - 1) * 3], normals[(c - 1) * 3 + 1], normals[(c - 1) * 3 + 2] };
+      tri_data->n1 = (vec3){ normals[(f - 1) * 3], normals[(f - 1) * 3 + 1], normals[(f - 1) * 3 + 2] };
+      tri_data->n2 = (vec3){ normals[(i - 1) * 3], normals[(i - 1) * 3 + 1], normals[(i - 1) * 3 + 2] };
+      tri_data->uv0[0] = uvs[(b - 1) * 2];
+      tri_data->uv0[1] = uvs[(b - 1) * 2 + 1];
+      tri_data->uv1[0] = uvs[(e - 1) * 2];
+      tri_data->uv1[1] = uvs[(e - 1) * 2 + 1];
+      tri_data->uv2[0] = uvs[(h - 1) * 2];
+      tri_data->uv2[1] = uvs[(h - 1) * 2 + 1]; 
     }
   }
 

@@ -132,12 +132,12 @@ void init(uint32_t width, uint32_t height)
     
     for(size_t i=0; i<TRI_CNT; i++) {
       vec3 a = vec3_sub(vec3_scale(vec3_rand(), 5.0f), (vec3){ 2.5f, 2.5f, 2.5f });
-      scn.meshes[j].tris[i].v[0] = a;
-      scn.meshes[j].tris[i].v[1] = vec3_add(a, vec3_rand());
-      scn.meshes[j].tris[i].v[2] = vec3_add(a, vec3_rand());
-      scn.meshes[j].tris_data[i].n[0] = vec3_rand();
-      scn.meshes[j].tris_data[i].n[1] = vec3_rand();
-      scn.meshes[j].tris_data[i].n[2] = vec3_rand();
+      scn.meshes[j].tris[i].v0 = a;
+      scn.meshes[j].tris[i].v1 = vec3_add(a, vec3_rand());
+      scn.meshes[j].tris[i].v2 = vec3_add(a, vec3_rand());
+      scn.meshes[j].tris_data[i].n0 = vec3_rand();
+      scn.meshes[j].tris_data[i].n1 = vec3_rand();
+      scn.meshes[j].tris_data[i].n2 = vec3_rand();
       tri_calc_center(&scn.meshes[j].tris[i]);
     }
 
@@ -223,7 +223,7 @@ bool update(float time)
             inst *inst = &scn.instances[h.id & 0xffff];
             size_t tri_idx = h.id >> 16;
             tri_data* data = buf_ptr(TRI_DATA, inst->ofs + tri_idx);
-            vec3 nrm = vec3_add(vec3_add(vec3_scale(data->n[1], h.u), vec3_scale(data->n[2], h.v)), vec3_scale(data->n[0], 1.0f - h.u - h.v));
+            vec3 nrm = vec3_add(vec3_add(vec3_scale(data->n1, h.u), vec3_scale(data->n2, h.v)), vec3_scale(data->n0, 1.0f - h.u - h.v));
             nrm = vec3_unit(mat4_mul_dir(inst->transform, nrm));
             nrm = vec3_scale(vec3_add(nrm, (vec3){ 1, 1, 1 }), 0.5f);
             c = vec3_mul(nrm, scn.materials[(inst->id >> 16) & 0xfff].color);
