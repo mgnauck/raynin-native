@@ -14,6 +14,7 @@ typedef struct mesh {
 } mesh;
 
 void mesh_init(mesh *m, uint32_t tri_cnt);
-void mesh_load_obj(mesh *m, const char *path, uint32_t tri_cnt, uint32_t vertex_cnt, uint32_t normal_cnt, uint32_t uv_cnt);
+void mesh_read_bin(mesh *m, unsigned char *data);
+void mesh_read_bin_file(mesh *m, const char *path);
 
 #endif

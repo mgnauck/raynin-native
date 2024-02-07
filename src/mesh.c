@@ -13,67 +13,70 @@ void mesh_init(mesh *m, uint32_t tri_cnt)
   m->tris_data = buf_acquire(TRI_DATA, tri_cnt);
 }
 
-void mesh_load_obj(mesh *m, const char *path, uint32_t tri_cnt, uint32_t vertex_cnt, uint32_t normal_cnt, uint32_t uv_cnt)
+void mesh_read_bin(mesh *m, unsigned char *data)
 {
-  mesh_init(m, tri_cnt);
+  uint32_t ofs = 0;
 
-  float *vertices = malloc(vertex_cnt * 3 * sizeof(float));
-  float *pvertices = vertices;
+  uint32_t vertex_cnt = *(uint32_t *)(data + ofs);
+  ofs += sizeof(vertex_cnt);
 
-  float *normals = malloc(normal_cnt * 3 * sizeof(float));
-  float *pnormals = normals;
+  uint32_t normal_cnt = *(uint32_t *)(data + ofs);
+  ofs += sizeof(vertex_cnt);
+  
+  uint32_t uv_cnt = *(uint32_t *)(data + ofs); 
+  ofs += sizeof(vertex_cnt);
 
-  float *uvs = malloc(uv_cnt * 2 * sizeof(float));
-  float *puvs = uvs;
+  m->tri_cnt = *(uint32_t *)(data + ofs);
+  ofs += sizeof(vertex_cnt);
 
-  uint32_t cnt = 0;
+  float *vertices = (float *)(data + ofs);
+  ofs += vertex_cnt * 3 * sizeof(*vertices);
 
-  FILE *f = fopen(path, "r");
-  if(!f)
-    exit(0);
+  float *normals = (float *)(data + ofs);
+  ofs += normal_cnt * 3 * sizeof(*normals);
 
-  while(!feof(f)) {
-#define LINE_SIZE 256
-    char line[LINE_SIZE] = { 0 };
-    fgets(line, LINE_SIZE - 1, f);
+  float *uvs = (float *)(data + ofs);
+  ofs += uv_cnt * 2 * sizeof(*uvs);
 
-    if(line == strstr(line, "vt ")) {
-			sscanf(line + 3, "%f %f", puvs, puvs + 1);
-      puvs += 2;
-    } else if(line == strstr(line, "vn ")) {
-			sscanf(line + 3, "%f %f %f", pnormals, pnormals + 1, pnormals + 2);
-      pnormals += 3;
-    } else if(line[0] == 'v') {
-			sscanf(line + 2, "%f %f %f", pvertices, pvertices + 1, pvertices + 2);
-      pvertices += 3;
+  uint32_t *indices = (uint32_t *)(data + ofs);
+
+  mesh_init(m, m->tri_cnt);
+
+  uint32_t items = (1 + (uv_cnt > 0 ? 1 : 0) + (normal_cnt > 0 ? 1 : 0));
+
+  for(uint32_t i=0; i<m->tri_cnt; i++) {
+    uint32_t index = 3 * items * i;
+ 
+    tri *t = &m->tris[i];
+    memcpy(&t->v0, &vertices[3 * indices[index]], sizeof(t->v0));
+    memcpy(&t->v1, &vertices[3 * indices[index + items]], sizeof(t->v1));
+    memcpy(&t->v2, &vertices[3 * indices[index + items + items]], sizeof(t->v2));
+
+    tri_data *td = &m->tris_data[i];
+    if(uv_cnt > 0 ) {
+      memcpy(td->uv0, &uvs[2 * indices[index + 1]], 2 * sizeof(*td->uv0));
+      memcpy(td->uv1, &uvs[2 * indices[index + items + 1]], 2 * sizeof(*td->uv1));
+      memcpy(td->uv2, &uvs[2 * indices[index + items + items + 1]], 2 * sizeof(*td->uv2));
+    }
+    if(normal_cnt > 0) {
+      memcpy(&td->n0, &normals[3 * indices[index + 2]], sizeof(td->n0));
+      memcpy(&td->n1, &normals[3 * indices[index + items + 2]], sizeof(td->n1));
+      memcpy(&td->n2, &normals[3 * indices[index + items + items + 2]], sizeof(td->n2));
     }
 
-    if(line[0] == 'f') {
-      int32_t a, b, c, d, e, f, g, h, i;
-			sscanf(line + 2, "%i/%i/%i %i/%i/%i %i/%i/%i", &a, &b, &c, &d, &e, &f, &g, &h, &i);
-
-      tri *tri = &m->tris[cnt];
-      tri->v0 = (vec3){ vertices[(a - 1) * 3], vertices[(a - 1) * 3 + 1], vertices[(a - 1) * 3 + 2] };
-      tri->v1 = (vec3){ vertices[(d - 1) * 3], vertices[(d - 1) * 3 + 1], vertices[(d - 1) * 3 + 2] };
-      tri->v2 = (vec3){ vertices[(g - 1) * 3], vertices[(g - 1) * 3 + 1], vertices[(g - 1) * 3 + 2] };
-      tri_calc_center(tri);
-
-      tri_data *tri_data = &m->tris_data[cnt++];
-      tri_data->n0 = (vec3){ normals[(c - 1) * 3], normals[(c - 1) * 3 + 1], normals[(c - 1) * 3 + 2] };
-      tri_data->n1 = (vec3){ normals[(f - 1) * 3], normals[(f - 1) * 3 + 1], normals[(f - 1) * 3 + 2] };
-      tri_data->n2 = (vec3){ normals[(i - 1) * 3], normals[(i - 1) * 3 + 1], normals[(i - 1) * 3 + 2] };
-      tri_data->uv0[0] = uvs[(b - 1) * 2];
-      tri_data->uv0[1] = uvs[(b - 1) * 2 + 1];
-      tri_data->uv1[0] = uvs[(e - 1) * 2];
-      tri_data->uv1[1] = uvs[(e - 1) * 2 + 1];
-      tri_data->uv2[0] = uvs[(h - 1) * 2];
-      tri_data->uv2[1] = uvs[(h - 1) * 2 + 1]; 
-    }
+    tri_calc_center(t);
   }
+}
 
+void mesh_read_bin_file(mesh *m, const char *path)
+{
+  FILE *f = fopen(path, "rb");
+  fseek(f, 0, SEEK_END);
+  size_t len = ftell(f);
+  fseek(f, 0, SEEK_SET);
+  unsigned char *buf = malloc(len * sizeof(char));
+  fread(buf, 1, len, f);
+  mesh_read_bin(m, buf);
+  free(buf);
   fclose(f);
-
-  free(uvs);
-  free(normals);
-  free(vertices);
 }
