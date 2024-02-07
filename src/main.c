@@ -18,9 +18,6 @@
 #define WIDTH     1024
 #define HEIGHT    768
 
-#define MOVE_VEL  0.2f
-#define LOOK_VEL  0.005f
-
 #define TRI_CNT   (1024 + 19332)
 #define MESH_CNT  2
 #define INST_CNT  16
@@ -51,6 +48,7 @@ void set_pix(uint32_t x, uint32_t y, vec3 v)
 
 void handle_keypress(const SDL_Keysym *key)
 {
+#define MOVE_VEL  0.2f
   switch(key->sym) {
     case SDLK_ESCAPE:
       quit = true;
@@ -92,6 +90,7 @@ void handle_keypress(const SDL_Keysym *key)
 
 void handle_mouse_motion(const SDL_MouseMotionEvent *event)
 {
+#define LOOK_VEL  0.005f
   float theta = min(max(acosf(-scn.cam.fwd.y) + (float)event->yrel * LOOK_VEL, 0.01f), 0.99f * PI);
   float phi = fmodf(atan2f(-scn.cam.fwd.z, scn.cam.fwd.x) + PI - (float)event->xrel * LOOK_VEL, 2.0f * PI);
   
@@ -102,7 +101,7 @@ void handle_mouse_motion(const SDL_MouseMotionEvent *event)
 
 void init(uint32_t width, uint32_t height)
 {
-  pcg_srand(31u, 303u);
+  pcg_srand(42u, 303u);
 
   buf_init(8);
   buf_reserve(GLOB, sizeof(char), GLOB_BUF_SIZE);
