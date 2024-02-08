@@ -123,10 +123,12 @@ void init(uint32_t width, uint32_t height)
   view_calc(&scn.view, config.width, config.height, &scn.cam);
 
   mesh_read_bin_file(&scn.meshes[0], "data/teapot.bin");
+  //mesh_read_bin(&scn.meshes[0], teapot);
   bvh_init(&scn.bvhs[0], scn.meshes[0].tri_cnt);
   bvh_build(&scn.bvhs[0], scn.meshes[0].tris, scn.meshes[0].tri_cnt);
   
   mesh_read_bin_file(&scn.meshes[1], "data/dragon.bin");
+  //mesh_read_bin(&scn.meshes[1], dragon);
   bvh_init(&scn.bvhs[1], scn.meshes[1].tri_cnt);
   bvh_build(&scn.bvhs[1], scn.meshes[1].tris, scn.meshes[1].tri_cnt);
 

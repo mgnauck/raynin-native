@@ -13,7 +13,7 @@ void mesh_init(mesh *m, uint32_t tri_cnt)
   m->tris_data = buf_acquire(TRI_DATA, tri_cnt);
 }
 
-void mesh_read_bin(mesh *m, unsigned char *data)
+void mesh_read_bin(mesh *m, const uint8_t *data)
 {
   uint32_t ofs = 0;
 
@@ -74,7 +74,7 @@ void mesh_read_bin_file(mesh *m, const char *path)
   fseek(f, 0, SEEK_END);
   size_t len = ftell(f);
   fseek(f, 0, SEEK_SET);
-  unsigned char *buf = malloc(len * sizeof(char));
+  uint8_t *buf = malloc(len * sizeof(*buf));
   fread(buf, 1, len, f);
   mesh_read_bin(m, buf);
   free(buf);
