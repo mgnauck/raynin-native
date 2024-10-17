@@ -10,7 +10,7 @@ static pcg32_random_t pcg32_global = { 0x853c49e6748fea9bULL, 0xda3e39cb94b95bdb
 
 float fabsf(float v)
 {
-  return v > 0 ? -v : v;
+  return v < 0 ? -v : v;
 }
 
 float floorf(float v)
